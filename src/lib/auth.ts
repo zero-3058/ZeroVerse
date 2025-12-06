@@ -3,11 +3,18 @@ import { createClient } from "@supabase/supabase-js";
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL!;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY!;
- alert("telegramLogin STARTED");
+
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 export async function telegramLogin() {
+
+  // 🟢 These alerts belong INSIDE the function
+  alert("telegramLogin STARTED");
+
   const tg = (window as any).Telegram?.WebApp;
+
+  alert("STEP: initData = " + tg?.initData);
+  console.log("INITDATA SENT:", tg?.initData);
 
   if (!tg?.initData) {
     console.error("No Telegram initData found.");
@@ -25,6 +32,7 @@ export async function telegramLogin() {
 
   if (!data.ok) {
     console.error("Telegram login failed:", data);
+    alert("Login failed: " + JSON.stringify(data));
     return null;
   }
 
