@@ -59,7 +59,7 @@ export default async function handler(req: any, res: any) {
     email_confirm: true,
   });
 
-  if (userErr && !userErr.message.includes("already registered")) {
+  if (userErr && !userErr.message.includes("email_exists")) {
     return res.status(500).json({ ok: false, error: userErr });
   }
 
