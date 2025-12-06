@@ -15,7 +15,7 @@ export async function telegramLogin() {
   }
 
   // Send Telegram initData to backend
-  const response = await fetch("/api/auth/telegram", {
+  const response = await fetch("/api/telegram", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ initData: tg.initData }),
