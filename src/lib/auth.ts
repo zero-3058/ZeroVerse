@@ -8,13 +8,14 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 export async function telegramLogin() {
 
-  // 🟢 These alerts belong INSIDE the function
+  // Debug alert (INSIDE the function)
   alert("telegramLogin STARTED");
 
   const tg = (window as any).Telegram?.WebApp;
 
-  alert("STEP: initData = " + tg?.initData);
-  console.log("INITDATA SENT:", tg?.initData);
+  const init = tg?.initData ?? "(no initData)";
+  alert("STEP: initData = " + init);
+  console.log("INITDATA SENT:", init);
 
   if (!tg?.initData) {
     console.error("No Telegram initData found.");
@@ -46,3 +47,4 @@ export async function telegramLogin() {
 
   return data.user;
 }
+
