@@ -1,4 +1,4 @@
-// api/auth/telegram.ts
+// api/telegram.ts
 
 import crypto from "crypto";
 import { createClient } from "@supabase/supabase-js";
@@ -25,13 +25,9 @@ function generateHash(initData: string, botToken: string) {
     .digest("hex");
 }
 
-// --- Create JWT token signed with Service Role Key ---
+// Create JWT manually (Supabase-compatible)
 function createSupabaseJWT(userId: string, serviceRoleKey: string) {
-  const header = {
-    alg: "HS256",
-    typ: "JWT",
-  };
-
+  const header = { alg: "HS256", typ: "JWT" };
   const payload = {
     sub: userId,
     role: "authenticated",
@@ -74,26 +70,28 @@ export default async function handler(req: any, res: any) {
   if (!BOT_TOKEN || !SUPABASE_URL || !SERVICE_ROLE) {
     return res.status(500).json({
       ok: false,
-      error: "Missing required environment variables",
+      error: "Server misconfigured: missing environment variables",
     });
   }
 
   const supabase = createClient(SUPABASE_URL, SERVICE_ROLE);
 
   try {
-    // ---------------------------------------------------
     // 1. VERIFY TELEGRAM SIGNATURE
-    // ---------------------------------------------------
     const params = parseInitData(initData);
     const receivedHash = params.hash;
-    if (!receivedHash) return res.status(400).json({ ok: false, error: "Missing hash" });
+
+    if (!receivedHash) {
+      return res.status(400).json({ ok: false, error: "Missing hash" });
+    }
 
     const computedHash = generateHash(initData, BOT_TOKEN);
+
     if (computedHash !== receivedHash) {
       return res.status(401).json({ ok: false, error: "Invalid initData signature" });
     }
 
-    // Extract Telegram user
+    // Extract Telegram user data
     const tgUser = params.user ? JSON.parse(params.user) : null;
     if (!tgUser) {
       return res.status(400).json({ ok: false, error: "Missing user data" });
@@ -101,9 +99,7 @@ export default async function handler(req: any, res: any) {
 
     const telegramId = tgUser.id;
 
-    // ---------------------------------------------------
-    // 2. FIND OR CREATE USER
-    // ---------------------------------------------------
+    // 2. FIND OR CREATE USER IN SUPABASE
     const { data: existing } = await supabase
       .from("profiles")
       .select("*")
@@ -113,7 +109,6 @@ export default async function handler(req: any, res: any) {
     let userId: string;
 
     if (!existing) {
-      // A. Create auth user
       const { data: authUser, error: createError } =
         await supabase.auth.admin.createUser({
           email: `tg-${telegramId}@telegram.local`,
@@ -132,7 +127,6 @@ export default async function handler(req: any, res: any) {
 
       userId = authUser.user.id;
 
-      // B. Insert into profile table
       await supabase.from("profiles").insert({
         id: userId,
         telegram_id: telegramId,
@@ -143,14 +137,10 @@ export default async function handler(req: any, res: any) {
       userId = existing.id;
     }
 
-    // ---------------------------------------------------
-    // 3. CREATE MANUAL SESSION TOKEN
-    // ---------------------------------------------------
+    // 3. CREATE SUPABASE SESSION TOKEN (JWT)
     const access_token = createSupabaseJWT(userId, SERVICE_ROLE);
 
-    // ---------------------------------------------------
-    // 4. SEND TO FRONTEND
-    // ---------------------------------------------------
+    // 4. RETURN RESULT
     return res.status(200).json({
       ok: true,
       verified: true,
