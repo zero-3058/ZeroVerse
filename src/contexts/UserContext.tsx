@@ -1,11 +1,5 @@
 // src/contexts/UserContext.tsx
-import React, {
-  createContext,
-  useContext,
-  useState,
-  useEffect,
-  useCallback,
-} from "react";
+import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { User, Transaction } from "@/types/user";
 import WebApp from "@twa-dev/sdk";
 import { supabase } from "@/supabase";
@@ -15,11 +9,7 @@ interface UserContextType {
   transactions: Transaction[];
   isLoading: boolean;
   error: string | null;
-  telegramUser: {
-    id: number;
-    name: string;
-    username?: string;
-  } | null;
+  telegramUser: { id: number; name: string; username?: string } | null;
   isTelegramApp: boolean;
   refreshUser: () => Promise<void>;
   updateUserPoints: (newPoints: number) => Promise<void>;
@@ -34,42 +24,28 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [telegramUser, setTelegramUser] = useState<{
-    id: number;
-    name: string;
-    username?: string;
-  } | null>(null);
+  const [telegramUser, setTelegramUser] = useState<any>(null);
   const [isTelegramApp, setIsTelegramApp] = useState(false);
 
-  /** ------------------------------------------
-   * INIT TELEGRAM WEBAPP + BASIC USER INFO
-   * ------------------------------------------*/
   const initializeTelegram = useCallback(() => {
-    const tg = WebApp;
+    const tg = (window as any).Telegram?.WebApp;
+    if (!tg) return;
 
-    if (tg) {
-      tg.ready();
-      tg.expand();
-      setIsTelegramApp(true);
+    tg.ready();
+    tg.expand();
+    setIsTelegramApp(true);
 
-      const tUser = tg.initDataUnsafe?.user;
-      if (tUser) {
-        const fullName = [tUser.first_name, tUser.last_name]
-          .filter(Boolean)
-          .join(" ");
-
-        setTelegramUser({
-          id: tUser.id,
-          name: fullName,
-          username: tUser.username,
-        });
-      }
+    const u = tg.initDataUnsafe?.user;
+    if (u) {
+      const fullName = [u.first_name, u.last_name].filter(Boolean).join(" ");
+      setTelegramUser({
+        id: u.id,
+        name: fullName,
+        username: u.username,
+      });
     }
   }, []);
 
-  /** ------------------------------------------
-   *  FETCH USER FROM BACKEND (service-role)
-   * ------------------------------------------*/
   const refreshUser = useCallback(async () => {
     setIsLoading(true);
     setError(null);
@@ -77,14 +53,12 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     try {
       initializeTelegram();
 
-      const tg = WebApp;
-
+      const tg = (window as any).Telegram?.WebApp;
       if (!tg || !tg.initData) {
-        setError("Please open inside Telegram Mini App.");
+        setError("Open inside Telegram Mini App.");
         return;
       }
 
-      // 1) Authenticate + sync user using backend
       const response = await fetch("/api/telegram", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -92,79 +66,55 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       });
 
       const data = await response.json();
-
-      if (!data.ok || !data.appUser) {
-        setError(data.error || "Failed to load user");
+      if (!data.ok) {
+        setError(data.error || "Auth failed");
         return;
       }
 
-      const appUser = data.appUser;
-      setUser(appUser);
+      setUser(data.appUser);
 
-      // 2) Load this user's transactions
-      const { data: tx, error: txErr } = await supabase
+      // Load transactions
+      const { data: tx } = await supabase
         .from("transactions")
         .select("*")
-        .eq("user_id", appUser.id)
+        .eq("user_id", data.appUser.id)
         .order("created_at", { ascending: false });
-
-      if (txErr) throw txErr;
 
       setTransactions(tx || []);
     } catch (err: any) {
-      setError(err.message || "Failed to load user");
+      setError(err.message);
     } finally {
       setIsLoading(false);
     }
   }, [initializeTelegram]);
 
-  /** ------------------------------------------
-   *  UPDATE USER POINTS (UI + DATABASE)
-   * ------------------------------------------*/
+  /** SAVE POINTS IN DB + UPDATE UI */
   const updateUserPoints = useCallback(
     async (newPoints: number) => {
       if (!user) return;
 
-      try {
-        // Call backend to update points in DB
-        const res = await fetch("/api/updatePoints", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            tg_id: user.tg_id,
-            newPoints,
-          }),
-        });
+      const response = await fetch("/api/updatePoints", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tg_id: user.tg_id, newPoints }),
+      });
 
-        const data = await res.json();
-
-        if (!data.ok || !data.user) {
-          console.error("Failed to update points:", data.error);
-          return;
-        }
-
-        // Use the user returned from DB (source of truth)
-        setUser(data.user as User);
-      } catch (err) {
-        console.error("updateUserPoints error:", err);
+      const data = await response.json();
+      if (data.ok) {
+        setUser(data.user);
       }
     },
     [user]
   );
 
-  /** Add transaction locally */
-  const addTransaction = useCallback((transaction: Transaction) => {
-    setTransactions((prev) => [transaction, ...prev]);
-  }, []);
+  const addTransaction = (tx: Transaction) => {
+    setTransactions((prev) => [tx, ...prev]);
+  };
 
-  /** Update TON wallet locally */
-  const setWalletAddress = useCallback((address: string) => {
-    setUser((prev) =>
-      prev ? { ...prev, ton_wallet_address: address } : null
-    );
-  }, []);
+  const setWalletAddress = (address: string) => {
+    setUser((u) => (u ? { ...u, ton_wallet_address: address } : u));
+  };
 
-  /** Auto-run on app load */
   useEffect(() => {
     refreshUser();
   }, [refreshUser]);
@@ -190,9 +140,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 }
 
 export function useUser() {
-  const context = useContext(UserContext);
-  if (!context) {
-    throw new Error("useUser must be used within a UserProvider");
-  }
-  return context;
+  const ctx = useContext(UserContext);
+  if (!ctx) throw new Error("useUser must be used inside UserProvider");
+  return ctx;
 }
