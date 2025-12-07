@@ -1,7 +1,7 @@
 // src/lib/auth.ts
 import { createClient } from "@supabase/supabase-js";
 
-// Load Supabase keys from Vite env
+// Load Supabase keys
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL!;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY!;
 
@@ -11,21 +11,25 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 export async function telegramLogin() {
   const tg = (window as any).Telegram?.WebApp;
 
-  // Ensure Telegram WebApp is available
+  // ⭐ ALERT 1
+  alert("telegramLogin STARTED");
+
   if (!tg) {
-    console.error("Telegram WebApp not available.");
+    alert("Telegram WebApp NOT available");
     return null;
   }
 
-  // Make sure initData exists
   if (!tg.initData) {
-    console.error("Telegram initData missing.");
+    alert("No initData found!");
     return null;
   }
 
   const initData = tg.initData;
 
-  // Send initData to backend for validation + session creation
+  // ⭐ ALERT 2
+  alert("STEP: initData = " + initData);
+
+  // Send initData to backend
   const response = await fetch("/api/telegram", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -35,34 +39,34 @@ export async function telegramLogin() {
   const data = await response.json();
   console.log("BACKEND RESPONSE:", data);
 
-  // Backend error → stop
   if (!data.ok) {
-    console.error("Telegram auth failed:", data);
+    alert("Backend auth failed: " + JSON.stringify(data));
     return null;
   }
 
-  // Extract session token returned by backend
   const access_token = data.session?.access_token;
 
   if (!access_token) {
-    console.error("No access token returned from backend.");
+    alert("No access token returned!");
     return null;
   }
 
-  // Apply session to Supabase
+  // Set Supabase session
   const { error: sessionErr } = await supabase.auth.setSession({
     access_token,
     refresh_token: "",
   });
 
   if (sessionErr) {
-    console.error("Supabase session error:", sessionErr);
+    alert("Supabase session error: " + sessionErr.message);
     return null;
   }
 
-  // Verify logged-in user
+  // Get logged-in user
   const { data: userData } = await supabase.auth.getUser();
-  console.log("LOGGED-IN USER:", userData);
+
+  // ⭐ ALERT 3 (The one you are missing!)
+  alert("LOGGED-IN USER: " + JSON.stringify(userData));
 
   return userData?.user ?? null;
 }
