@@ -19,7 +19,6 @@ export async function telegramLogin() {
 
     const initData = tg.initData;
 
-    // Send initData to backend for verification
     const response = await fetch("/api/telegram", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -34,13 +33,15 @@ export async function telegramLogin() {
       return null;
     }
 
-    // Save your DB user in localStorage
-    if (data.appUser) {
-      localStorage.setItem("appUser", JSON.stringify(data.appUser));
-      return data.appUser;
+    if (!data.appUser) {
+      console.error("No appUser in backend response");
+      return null;
     }
 
-    return null;
+    // Save your DB user in localStorage
+    localStorage.setItem("appUser", JSON.stringify(data.appUser));
+
+    return data.appUser;
   } catch (err) {
     console.error("telegramLogin ERROR:", err);
     return null;
