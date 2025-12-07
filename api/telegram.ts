@@ -58,6 +58,9 @@ export default async function handler(req: any, res: any) {
     email,
     email_confirm: true,
   });
+  if (userErr) {
+   console.error("CREATE USER ERROR:", userErr);
+  }
 
   if (userErr && !userErr.message.includes("email_exists")) {
     return res.status(500).json({ ok: false, error: userErr });
@@ -70,8 +73,10 @@ export default async function handler(req: any, res: any) {
   });
 
   if (linkErr) {
-    return res.status(500).json({ ok: false, error: linkErr });
-  }
+   console.error("GENERATE LINK ERROR:", linkErr); // 🔥 DEBUG LOG
+   return res.status(500).json({ ok: false, error: linkErr });
+ }
+
 
   const access_token = linkData?.properties?.hashed_token;
 
