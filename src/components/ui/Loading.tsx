@@ -4,22 +4,30 @@ export function Loading() {
   return (
     <div className="fixed inset-0 bg-background flex items-center justify-center z-50">
       <div className="flex flex-col items-center gap-4">
+
+        {/* ⭐ CUSTOM LOGO */}
         <div className="relative">
-          <div className="w-16 h-16 rounded-xl gradient-primary animate-pulse-glow flex items-center justify-center">
-            <span className="text-primary-foreground font-bold text-2xl font-display">Z</span>
-          </div>
+          <img
+            src="/zeroverselogo.png"  // <-- put your actual logo file here
+            alt="ZeroVerse Logo"
+            className="w-20 h-20 object-contain rounded-xl animate-pulse-glow"
+          />
+
+          {/* Glow ring animation */}
           <div className="absolute -inset-2 rounded-2xl border border-primary/20 animate-ping" />
         </div>
-        <p className="text-muted-foreground text-sm animate-pulse">Loading ZeroVerse...</p>
+
+        <p className="text-muted-foreground text-sm animate-pulse">
+          Loading ZeroVerse...
+        </p>
+
       </div>
     </div>
   );
 }
 
 export function Skeleton({ className = "" }: { className?: string }) {
-  return (
-    <div className={`animate-pulse bg-muted rounded-lg ${className}`} />
-  );
+  return <div className={`animate-pulse bg-muted rounded-lg ${className}`} />;
 }
 
 export function CardSkeleton() {
