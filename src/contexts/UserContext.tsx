@@ -1,6 +1,6 @@
 // src/contexts/UserContext.tsx
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { User, Transaction } from '@/types/user';
+import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
+import { User, Transaction } from "@/types/user";
 import WebApp from "@twa-dev/sdk";
 import { supabase } from "@/supabase";
 
@@ -16,7 +16,7 @@ interface UserContextType {
   } | null;
   isTelegramApp: boolean;
   refreshUser: () => Promise<void>;
-  updateUserPoints: (newPoints: number) => void;
+  updateUserPoints: (newPoints: number) => Promise<void>;
   addTransaction: (transaction: Transaction) => void;
   setWalletAddress: (address: string) => void;
 }
@@ -66,13 +66,12 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       initializeTelegram();
 
       const tg = WebApp;
-
       if (!tg || !tg.initData) {
         setError("Please open inside Telegram Mini App.");
         return;
       }
 
-      // 1) Authenticate + sync user using backend
+      // Authenticate + sync user
       const response = await fetch("/api/telegram", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -80,7 +79,6 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       });
 
       const data = await response.json();
-
       if (!data.ok || !data.appUser) {
         setError(data.error || "Failed to load user");
         return;
@@ -89,7 +87,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       const appUser = data.appUser;
       setUser(appUser);
 
-      // 2) Load this user's transactions (reads allowed with anon)
+      // Fetch transactions
       const { data: tx, error: txErr } = await supabase
         .from("transactions")
         .select("*")
@@ -107,10 +105,32 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     }
   }, [initializeTelegram]);
 
-  /** Update points locally */
-  const updateUserPoints = useCallback((newPoints: number) => {
-    setUser(prev => prev ? { ...prev, zero_points: newPoints } : null);
-  }, []);
+  /** ------------------------------------------
+   *  UPDATE USER POINTS (UI + DATABASE)
+   * ------------------------------------------*/
+  const updateUserPoints = useCallback(
+    async (newPoints: number) => {
+      if (!user) return;
+
+      // 1️⃣ Update UI immediately
+      setUser(prev => (prev ? { ...prev, zero_points: newPoints } : null));
+
+      // 2️⃣ Save permanently to backend
+      try {
+        await fetch("/api/updatePoints", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            tg_id: user.tg_id,
+            newPoints,
+          }),
+        });
+      } catch (err) {
+        console.error("Failed to update points:", err);
+      }
+    },
+    [user]
+  );
 
   /** Add transaction locally */
   const addTransaction = useCallback((transaction: Transaction) => {
@@ -119,7 +139,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
   /** Update TON wallet locally */
   const setWalletAddress = useCallback((address: string) => {
-    setUser(prev => prev ? { ...prev, ton_wallet_address: address } : null);
+    setUser(prev => (prev ? { ...prev, ton_wallet_address: address } : null));
   }, []);
 
   /** Auto-run on app load */
@@ -128,18 +148,20 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   }, [refreshUser]);
 
   return (
-    <UserContext.Provider value={{
-      user,
-      transactions,
-      isLoading,
-      error,
-      telegramUser,
-      isTelegramApp,
-      refreshUser,
-      updateUserPoints,
-      addTransaction,
-      setWalletAddress
-    }}>
+    <UserContext.Provider
+      value={{
+        user,
+        transactions,
+        isLoading,
+        error,
+        telegramUser,
+        isTelegramApp,
+        refreshUser,
+        updateUserPoints,
+        addTransaction,
+        setWalletAddress,
+      }}
+    >
       {children}
     </UserContext.Provider>
   );
