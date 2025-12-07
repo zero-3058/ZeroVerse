@@ -6,6 +6,10 @@ export interface User {
   zero_points: number;
   ton_wallet_address?: string;
   referrer_id?: string;
+
+  referral_count: number;
+  referral_points_earned: number;
+
   created_at: string;
   updated_at: string;
 }

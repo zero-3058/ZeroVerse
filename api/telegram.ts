@@ -40,67 +40,130 @@ export default async function handler(req: any, res: any) {
 
   try {
     const botToken = process.env.BOT_TOKEN!;
-    const { initData } = req.body as { initData?: string };
+    const { initData } = req.body;
 
     if (!initData) {
       return res.status(400).json({ ok: false, error: "Missing initData" });
     }
 
-    // 1) Telegram signature validation
     if (!validateTelegram(initData, botToken)) {
       return res.status(401).json({ ok: false, error: "Invalid signature" });
     }
 
-    // 2) Extract Telegram user from initData
+    // Extract user
     const params = new URLSearchParams(initData);
     const userRaw = params.get("user");
+    const startParam = params.get("start_param") || null;
 
     if (!userRaw) {
       return res.status(400).json({ ok: false, error: "Missing user data" });
     }
 
-    const user = JSON.parse(userRaw);
+    const tgUser = JSON.parse(userRaw);
 
-    const tg_id = String(user.id);
-    const tg_name = user.first_name
-      ? user.last_name
-        ? `${user.first_name} ${user.last_name}`
-        : user.first_name
+    const tg_id = String(tgUser.id);
+    const tg_name = tgUser.first_name
+      ? `${tgUser.first_name} ${tgUser.last_name || ""}`.trim()
       : null;
-    const tg_username = user.username ?? null;
+    const tg_username = tgUser.username ?? null;
 
-    // 3) UPSERT into your existing `users` table
-    const { data: appUser, error: upsertErr } = await supabase
+    // Check if user already exists
+    const { data: existingUser } = await supabase
       .from("users")
-      .upsert(
-        {
+      .select("*")
+      .eq("tg_id", tg_id)
+      .maybeSingle();
+
+    let isNewUser = false;
+    let newUserRecord = existingUser;
+
+    // CREATE NEW USER
+    if (!existingUser) {
+      isNewUser = true;
+
+      const { data: newUser, error: insertErr } = await supabase
+        .from("users")
+        .insert({
           tg_id,
           tg_name,
           tg_username,
-          // zero_points uses default if new row
-        },
-        {
-          onConflict: "tg_id",
-        }
-      )
-      .select()
-      .single();
+          zero_points: 200, // new user reward
+          referral_count: 0,
+          referral_points_earned: 0,
+          created_at: new Date().toISOString(),
+        })
+        .select()
+        .single();
 
-    if (upsertErr) {
-      console.error("Supabase users upsert error:", upsertErr);
-      return res
-        .status(500)
-        .json({ ok: false, error: "Failed to upsert app user" });
+      if (insertErr) {
+        console.error(insertErr);
+        return res.status(500).json({ ok: false, error: insertErr.message });
+      }
+
+      newUserRecord = newUser;
+    } else {
+      // UPDATE EXISTING USER INFO
+      const { data: updatedUser, error: updateErr } = await supabase
+        .from("users")
+        .update({
+          tg_name,
+          tg_username,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("tg_id", tg_id)
+        .select()
+        .single();
+
+      if (updateErr) {
+        return res.status(500).json({ ok: false, error: updateErr.message });
+      }
+
+      newUserRecord = updatedUser;
     }
 
-    // 4) SUCCESS
+    // REFERRAL PROCESS ONLY IF USER IS NEW
+    if (isNewUser && startParam) {
+      const referrerTgId = startParam;
+
+      // Prevent self-referral
+      if (referrerTgId !== tg_id) {
+        // Find the referrer
+        const { data: referrer } = await supabase
+          .from("users")
+          .select("*")
+          .eq("tg_id", referrerTgId)
+          .maybeSingle();
+
+        if (referrer) {
+          // Set new user's referrer_id
+          await supabase
+            .from("users")
+            .update({
+              referrer_id: referrer.id,
+            })
+            .eq("id", newUserRecord.id);
+
+          // REWARD REFERRER
+          await supabase
+            .from("users")
+            .update({
+              zero_points: (referrer.zero_points || 0) + 200, // Reward
+              referral_count: (referrer.referral_count || 0) + 1,
+              referral_points_earned:
+                (referrer.referral_points_earned || 0) + 200,
+            })
+            .eq("id", referrer.id);
+        }
+      }
+    }
+
     return res.json({
       ok: true,
-      user,    // raw Telegram user object
-      appUser, // row from your `users` table
+      appUser: newUserRecord,
+      startParam: startParam || null,
     });
   } catch (err: any) {
-    console.error("Telegram handler error:", err);
+    console.error("telegram auth error:", err);
     return res.status(500).json({ ok: false, error: err.message });
   }
 }
