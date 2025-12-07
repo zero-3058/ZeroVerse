@@ -3,7 +3,7 @@ import { Copy, Check, Users, Gift } from 'lucide-react';
 import { useUser } from '@/contexts/UserContext';
 import { toast } from '@/hooks/use-toast';
 
-const BOT_NAME = 'ZeroVerseBot'; // Replace with actual bot name
+const BOT_NAME = 'Zeroverse_app_bot'; // Replace with actual bot name
 
 export function ReferralSection() {
   const { user, transactions } = useUser();
