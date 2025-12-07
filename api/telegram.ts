@@ -2,7 +2,7 @@
 import crypto from "crypto";
 import { createClient } from "@supabase/supabase-js";
 
-// Backend Supabase admin client
+// Backend Supabase admin client (service role)
 const supabase = createClient(
   process.env.SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -39,23 +39,29 @@ export default async function handler(req: any, res: any) {
   }
 
   const botToken = process.env.BOT_TOKEN!;
-  const { initData } = req.body;
+  const { initData } = req.body as { initData?: string };
 
   if (!initData) {
     return res.status(400).json({ ok: false, error: "Missing initData" });
   }
 
-  // Telegram signature validation
+  // 1) Telegram signature validation
   if (!validateTelegram(initData, botToken)) {
     return res.status(401).json({ ok: false, error: "Invalid signature" });
   }
 
-  // Extract user from Telegram initData
+  // 2) Extract Telegram user from initData
   const params = new URLSearchParams(initData);
-  const user = JSON.parse(params.get("user")!);
+  const userRaw = params.get("user");
+
+  if (!userRaw) {
+    return res.status(400).json({ ok: false, error: "Missing user data" });
+  }
+
+  const user = JSON.parse(userRaw);
   const email = `${user.id}@telegram.local`;
 
-  // Create Supabase user (ignore if already exists)
+  // 3) Create Supabase Auth user (ignore if already exists)
   const { error: userErr } = await supabase.auth.admin.createUser({
     email,
     email_confirm: true,
@@ -65,7 +71,7 @@ export default async function handler(req: any, res: any) {
     return res.status(500).json({ ok: false, error: userErr.message });
   }
 
-  // Generate a login link → returns a token
+  // 4) Generate a login link → returns a token
   const { data: linkData, error: linkErr } =
     await supabase.auth.admin.generateLink({
       type: "magiclink",
@@ -90,10 +96,56 @@ export default async function handler(req: any, res: any) {
     });
   }
 
-  // SUCCESS!
+  // 5) UPSERT into your existing `users` table
+  // Schema:
+  // id uuid primary key default gen_random_uuid(),
+  // tg_id text unique not null,
+  // tg_name text,
+  // tg_username text,
+  // zero_points integer default 0,
+  // ton_wallet_address text,
+  // referrer_id uuid references users(id) on delete set null,
+  // created_at timestamptz default now(),
+  // updated_at timestamptz default now()
+  const tg_id = String(user.id);
+  const tg_name = user.first_name
+    ? user.last_name
+      ? `${user.first_name} ${user.last_name}`
+      : user.first_name
+    : null;
+  const tg_username = user.username ?? null;
+
+  const { data: appUser, error: upsertErr } = await supabase
+    .from("users")
+    .upsert(
+      {
+        tg_id,
+        tg_name,
+        tg_username,
+        // zero_points will use default 0 if new row
+      },
+      {
+        onConflict: "tg_id",
+      }
+    )
+    .select()
+    .single();
+
+  if (upsertErr) {
+    console.error("Supabase users upsert error:", upsertErr);
+    return res
+      .status(500)
+      .json({ ok: false, error: "Failed to upsert app user" });
+  }
+
+  // 6) SUCCESS → return:
+  // - raw Telegram user (user)
+  // - Supabase Auth session token (session.access_token)
+  // - your app-level user record from `users` table (appUser)
   return res.json({
     ok: true,
-    user,
+    user, // Telegram user object
     session: { access_token },
+    appUser, // Row from `users` table (includes zero_points, etc.)
   });
 }

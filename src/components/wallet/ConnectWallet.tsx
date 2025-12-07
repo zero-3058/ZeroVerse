@@ -1,34 +1,41 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Wallet, Unplug, Copy, Check } from 'lucide-react';
 import { useUser } from '@/contexts/UserContext';
 import { toast } from '@/hooks/use-toast';
+import { tonConnectUI } from '@/ton-connect';
 
 export function ConnectWallet() {
   const { user, setWalletAddress } = useUser();
-  const [isConnecting, setIsConnecting] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [isConnecting, setIsConnecting] = useState(false);
+
+  // Listen to wallet connection events
+  useEffect(() => {
+    const unsubscribe = tonConnectUI.onStatusChange((wallet) => {
+      if (wallet) {
+        setWalletAddress(wallet.account.address);
+        toast({
+          title: "Wallet Connected",
+          description: "Your TON wallet has been linked successfully.",
+        });
+      }
+    });
+    return unsubscribe;
+  }, [setWalletAddress]);
 
   const handleConnect = async () => {
     setIsConnecting(true);
-    
-    // In production, use TON Connect SDK here
-    // For demo, simulate connection
-    setTimeout(() => {
-      const mockAddress = 'UQ' + Math.random().toString(36).substring(2, 15).toUpperCase() + '...';
-      setWalletAddress(mockAddress);
-      setIsConnecting(false);
-      toast({
-        title: "Wallet Connected",
-        description: "Your TON wallet has been linked successfully."
-      });
-    }, 1500);
+    await tonConnectUI.openModal(); // 💥 This opens the correct wallet modal
+    setIsConnecting(false);
   };
 
-  const handleDisconnect = () => {
-    setWalletAddress('');
+  const handleDisconnect = async () => {
+    await tonConnectUI.disconnect();
+    setWalletAddress("");
+
     toast({
       title: "Wallet Disconnected",
-      description: "Your wallet has been unlinked."
+      description: "Your wallet has been unlinked.",
     });
   };
 
@@ -51,15 +58,18 @@ export function ConnectWallet() {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Connected Wallet</p>
-                <p className="font-mono text-sm">{user.ton_wallet_address}</p>
+                <p className="font-mono text-sm break-all">{user.ton_wallet_address}</p>
               </div>
             </div>
-            <button onClick={copyAddress} className="p-2 rounded-lg bg-secondary hover:bg-muted transition-colors">
+            <button
+              onClick={copyAddress}
+              className="p-2 rounded-lg bg-secondary hover:bg-muted transition-colors"
+            >
               {copied ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
             </button>
           </div>
         </div>
-        
+
         <button onClick={handleDisconnect} className="btn-secondary w-full">
           <Unplug className="w-4 h-4" />
           Disconnect Wallet
@@ -75,7 +85,7 @@ export function ConnectWallet() {
       className="btn-wallet w-full"
     >
       <Wallet className="w-5 h-5" />
-      {isConnecting ? 'Connecting...' : 'Connect TON Wallet'}
+      {isConnecting ? "Connecting..." : "Connect TON Wallet"}
     </button>
   );
 }
