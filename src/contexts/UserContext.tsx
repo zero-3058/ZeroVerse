@@ -1,5 +1,11 @@
 // src/contexts/UserContext.tsx
-import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useCallback,
+} from "react";
 import { User, Transaction } from "@/types/user";
 import WebApp from "@twa-dev/sdk";
 import { supabase } from "@/supabase";
@@ -28,7 +34,11 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [telegramUser, setTelegramUser] = useState<{ id: number; name: string; username?: string } | null>(null);
+  const [telegramUser, setTelegramUser] = useState<{
+    id: number;
+    name: string;
+    username?: string;
+  } | null>(null);
   const [isTelegramApp, setIsTelegramApp] = useState(false);
 
   /** ------------------------------------------
@@ -44,7 +54,9 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
       const tUser = tg.initDataUnsafe?.user;
       if (tUser) {
-        const fullName = [tUser.first_name, tUser.last_name].filter(Boolean).join(" ");
+        const fullName = [tUser.first_name, tUser.last_name]
+          .filter(Boolean)
+          .join(" ");
 
         setTelegramUser({
           id: tUser.id,
@@ -66,12 +78,13 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       initializeTelegram();
 
       const tg = WebApp;
+
       if (!tg || !tg.initData) {
         setError("Please open inside Telegram Mini App.");
         return;
       }
 
-      // Authenticate + sync user
+      // 1) Authenticate + sync user using backend
       const response = await fetch("/api/telegram", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -79,6 +92,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       });
 
       const data = await response.json();
+
       if (!data.ok || !data.appUser) {
         setError(data.error || "Failed to load user");
         return;
@@ -87,7 +101,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       const appUser = data.appUser;
       setUser(appUser);
 
-      // Fetch transactions
+      // 2) Load this user's transactions
       const { data: tx, error: txErr } = await supabase
         .from("transactions")
         .select("*")
@@ -97,7 +111,6 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       if (txErr) throw txErr;
 
       setTransactions(tx || []);
-
     } catch (err: any) {
       setError(err.message || "Failed to load user");
     } finally {
@@ -112,12 +125,9 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     async (newPoints: number) => {
       if (!user) return;
 
-      // 1️⃣ Update UI immediately
-      setUser(prev => (prev ? { ...prev, zero_points: newPoints } : null));
-
-      // 2️⃣ Save permanently to backend
       try {
-        await fetch("/api/updatePoints", {
+        // Call backend to update points in DB
+        const res = await fetch("/api/updatePoints", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -125,8 +135,18 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
             newPoints,
           }),
         });
+
+        const data = await res.json();
+
+        if (!data.ok || !data.user) {
+          console.error("Failed to update points:", data.error);
+          return;
+        }
+
+        // Use the user returned from DB (source of truth)
+        setUser(data.user as User);
       } catch (err) {
-        console.error("Failed to update points:", err);
+        console.error("updateUserPoints error:", err);
       }
     },
     [user]
@@ -134,12 +154,14 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
   /** Add transaction locally */
   const addTransaction = useCallback((transaction: Transaction) => {
-    setTransactions(prev => [transaction, ...prev]);
+    setTransactions((prev) => [transaction, ...prev]);
   }, []);
 
   /** Update TON wallet locally */
   const setWalletAddress = useCallback((address: string) => {
-    setUser(prev => (prev ? { ...prev, ton_wallet_address: address } : null));
+    setUser((prev) =>
+      prev ? { ...prev, ton_wallet_address: address } : null
+    );
   }, []);
 
   /** Auto-run on app load */
