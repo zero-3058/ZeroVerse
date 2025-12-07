@@ -2,7 +2,7 @@
 import crypto from "crypto";
 import { createClient } from "@supabase/supabase-js";
 
-// BACKEND supabase client
+// BACKEND Supabase client
 const supabase = createClient(
   process.env.SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -45,45 +45,62 @@ export default async function handler(req: any, res: any) {
     return res.status(400).json({ ok: false, error: "Missing initData" });
   }
 
+  // Signature verification
   if (!validateTelegram(initData, botToken)) {
     return res.status(401).json({ ok: false, error: "Invalid signature" });
   }
 
+  // Parse Telegram user
   const params = new URLSearchParams(initData);
   const user = JSON.parse(params.get("user")!);
   const email = `${user.id}@telegram.local`;
 
-  // Create user if not exists
+  // Attempt to create user
   const { error: userErr } = await supabase.auth.admin.createUser({
     email,
     email_confirm: true,
   });
+
+  // Log the error for debugging
   if (userErr) {
-   console.error("CREATE USER ERROR:", userErr);
+    console.error("CREATE USER ERROR:", userErr);
   }
 
-  if (userErr && !userErr.message.includes("email_exists")) {
+  // Allow "email already exists" → NOT a real error
+  if (userErr && userErr.code !== "email_exists") {
     return res.status(500).json({ ok: false, error: userErr });
   }
 
-  // Generate login link to produce access token
-  const { data: linkData, error: linkErr } = await supabase.auth.admin.generateLink({
-    type: "magiclink",
-    email,
-  });
+  // Generate login link to get token
+  const { data: linkData, error: linkErr } =
+    await supabase.auth.admin.generateLink({
+      type: "magiclink",
+      email,
+    });
 
   if (linkErr) {
-   console.error("GENERATE LINK ERROR:", linkErr); // 🔥 DEBUG LOG
-   return res.status(500).json({ ok: false, error: linkErr });
- }
-
-
-  const access_token = linkData?.properties?.hashed_token;
-
-  if (!access_token) {
-    return res.status(500).json({ ok: false, error: "No access token generated" });
+    console.error("GENERATE LINK ERROR:", linkErr);
+    return res.status(500).json({ ok: false, error: linkErr });
   }
 
+  // NEW Supabase returns token in properties.hassed_token OR token
+  // Safely extract token (runtime only — avoid TS errors)
+  const props: any = linkData?.properties || {};
+  const access_token =
+   props.hashed_token ||
+   props.token ||
+  null;
+
+
+  if (!access_token) {
+    console.error("NO ACCESS TOKEN RETURNED:", linkData);
+    return res.status(500).json({
+      ok: false,
+      error: "No access token returned by generateLink",
+    });
+  }
+
+  // SUCCESS
   return res.json({
     ok: true,
     user,
