@@ -5,7 +5,7 @@ import { createClient } from "@supabase/supabase-js";
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL!;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY!;
 
-// Global Supabase client
+// Global Supabase client (still available if you use DB later)
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 export async function telegramLogin() {
@@ -29,7 +29,7 @@ export async function telegramLogin() {
   // ⭐ ALERT 2
   alert("STEP: initData = " + initData);
 
-  // Send initData to backend
+  // Send initData to backend for verification and login
   const response = await fetch("/api/telegram", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -44,29 +44,11 @@ export async function telegramLogin() {
     return null;
   }
 
-  const access_token = data.session?.access_token;
+  // ⭐ SUCCESS → Backend verified Telegram user
+  const telegramUser = data.user;
 
-  if (!access_token) {
-    alert("No access token returned!");
-    return null;
-  }
+  // ⭐ ALERT 3
+  alert("LOGGED-IN USER: " + JSON.stringify(telegramUser));
 
-  // Set Supabase session
-  const { error: sessionErr } = await supabase.auth.setSession({
-    access_token,
-    refresh_token: "",
-  });
-
-  if (sessionErr) {
-    alert("Supabase session error: " + sessionErr.message);
-    return null;
-  }
-
-  // Get logged-in user
-  const { data: userData } = await supabase.auth.getUser();
-
-  // ⭐ ALERT 3 (The one you are missing!)
-  alert("LOGGED-IN USER: " + JSON.stringify(userData));
-
-  return userData?.user ?? null;
+  return telegramUser;
 }
