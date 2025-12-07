@@ -9,7 +9,7 @@ interface UserContextType {
   transactions: Transaction[];
   isLoading: boolean;
   error: string | null;
-  telegramUser: { id: number; name: string; username?: string } | null;
+  telegramUser: { id: number; name: string; username?: string; photo_url?: string | null } | null;
   isTelegramApp: boolean;
   refreshUser: () => Promise<void>;
   updateUserPoints: (newPoints: number) => Promise<void>;
@@ -27,6 +27,9 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   const [telegramUser, setTelegramUser] = useState<any>(null);
   const [isTelegramApp, setIsTelegramApp] = useState(false);
 
+  /** ---------------------------------------------
+   * Initialize Telegram WebApp + load basic info
+   * --------------------------------------------- */
   const initializeTelegram = useCallback(() => {
     const tg = (window as any).Telegram?.WebApp;
     if (!tg) return;
@@ -42,10 +45,14 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         id: u.id,
         name: fullName,
         username: u.username,
+        photo_url: u.photo_url ?? null, // ⭐ ADDED PHOTO URL
       });
     }
   }, []);
 
+  /** ---------------------------------------------
+   * Authenticate user via backend + load profile
+   * --------------------------------------------- */
   const refreshUser = useCallback(async () => {
     setIsLoading(true);
     setError(null);
@@ -59,6 +66,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
+      // Authenticate with backend
       const response = await fetch("/api/telegram", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -71,9 +79,10 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
+      // ⭐ Backend now includes photo_url — keep it
       setUser(data.appUser);
 
-      // Load transactions
+      // Load user's transactions
       const { data: tx } = await supabase
         .from("transactions")
         .select("*")
@@ -88,7 +97,9 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     }
   }, [initializeTelegram]);
 
-  /** SAVE POINTS IN DB + UPDATE UI */
+  /** ---------------------------------------------
+   * Update user points (persistent)
+   * --------------------------------------------- */
   const updateUserPoints = useCallback(
     async (newPoints: number) => {
       if (!user) return;
@@ -101,20 +112,23 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
       const data = await response.json();
       if (data.ok) {
-        setUser(data.user);
+        setUser(data.user); // Update local state with saved version
       }
     },
     [user]
   );
 
+  /** Add new transaction locally */
   const addTransaction = (tx: Transaction) => {
     setTransactions((prev) => [tx, ...prev]);
   };
 
+  /** Update wallet address locally */
   const setWalletAddress = (address: string) => {
     setUser((u) => (u ? { ...u, ton_wallet_address: address } : u));
   };
 
+  /** Load user on app start */
   useEffect(() => {
     refreshUser();
   }, [refreshUser]);

@@ -50,7 +50,7 @@ export default async function handler(req: any, res: any) {
       return res.status(401).json({ ok: false, error: "Invalid signature" });
     }
 
-    // Extract user
+    // Extract user and start_param
     const params = new URLSearchParams(initData);
     const userRaw = params.get("user");
     const startParam = params.get("start_param") || null;
@@ -61,9 +61,11 @@ export default async function handler(req: any, res: any) {
 
     const tgUser = JSON.parse(userRaw);
 
+    // Extract Telegram fields
     const tg_id = String(tgUser.id);
     const tg_name = `${tgUser.first_name || ""} ${tgUser.last_name || ""}`.trim();
     const tg_username = tgUser.username ?? null;
+    const photo_url = tgUser.photo_url ?? null; // ⭐ NEW! profile photo
 
     // Check if user exists
     const { data: existingUser } = await supabase
@@ -73,9 +75,9 @@ export default async function handler(req: any, res: any) {
       .maybeSingle();
 
     let isNewUser = false;
-    let newUserRecord = existingUser;
+    let userRecord = existingUser;
 
-    // CREATE NEW USER
+    // CREATE USER IF NOT EXISTS
     if (!existingUser) {
       isNewUser = true;
 
@@ -85,7 +87,8 @@ export default async function handler(req: any, res: any) {
           tg_id,
           tg_name,
           tg_username,
-          zero_points: 200, // welcome reward
+          photo_url,           // ⭐ SAVE PHOTO
+          zero_points: 200,     // welcome reward
           referral_count: 0,
           referral_points_earned: 0,
           created_at: new Date().toISOString(),
@@ -98,14 +101,17 @@ export default async function handler(req: any, res: any) {
         return res.status(500).json({ ok: false, error: insertErr.message });
       }
 
-      newUserRecord = newUser;
-    } else {
-      // UPDATE EXISTING USER INFO
+      userRecord = newUser;
+    }
+
+    // UPDATE EXISTING USER ALWAYS
+    else {
       const { data: updatedUser, error: updateErr } = await supabase
         .from("users")
         .update({
           tg_name,
           tg_username,
+          photo_url,    // ⭐ KEEP PHOTO UPDATED
           updated_at: new Date().toISOString(),
         })
         .eq("tg_id", tg_id)
@@ -113,44 +119,43 @@ export default async function handler(req: any, res: any) {
         .single();
 
       if (updateErr) {
+        console.error(updateErr);
         return res.status(500).json({ ok: false, error: updateErr.message });
       }
 
-      newUserRecord = updatedUser;
+      userRecord = updatedUser;
     }
 
-    // REFERRAL ONLY IF NEW USER
-    if (isNewUser && startParam) {
+    // ⚡ REFERRAL LOGIC ONLY FOR NEW USERS
+    if (isNewUser && startParam && startParam !== tg_id) {
       const referrerTgId = startParam;
 
-      if (referrerTgId !== tg_id) {
-        const { data: referrer } = await supabase
+      const { data: referrer } = await supabase
+        .from("users")
+        .select("*")
+        .eq("tg_id", referrerTgId)
+        .maybeSingle();
+
+      if (referrer) {
+        // Link new user to referrer
+        await supabase
           .from("users")
-          .select("*")
-          .eq("tg_id", referrerTgId)
-          .maybeSingle();
+          .update({ referrer_id: referrer.id })
+          .eq("id", userRecord.id);
 
-        if (referrer) {
-          // Set referrer ID for new user
-          await supabase
-            .from("users")
-            .update({ referrer_id: referrer.id })
-            .eq("id", newUserRecord.id);
-
-          // Apply reward
-          await supabase
-            .from("users")
-            .update({
-              zero_points: (referrer.zero_points || 0) + 200,
-              referral_count: (referrer.referral_count || 0) + 1,
-              referral_points_earned: (referrer.referral_points_earned || 0) + 200,
-            })
-            .eq("id", referrer.id);
-        }
+        // Reward referrer
+        await supabase
+          .from("users")
+          .update({
+            zero_points: (referrer.zero_points || 0) + 200,
+            referral_count: (referrer.referral_count || 0) + 1,
+            referral_points_earned: (referrer.referral_points_earned || 0) + 200,
+          })
+          .eq("id", referrer.id);
       }
     }
 
-    // 💥 ALWAYS FETCH FRESH USER AFTER ALL UPDATES
+    // ⭐ ALWAYS FETCH FINAL USER AFTER ALL UPDATES
     const { data: finalUser, error: finalErr } = await supabase
       .from("users")
       .select("*")
@@ -165,7 +170,7 @@ export default async function handler(req: any, res: any) {
     return res.json({
       ok: true,
       appUser: finalUser,
-      startParam: startParam || null,
+      startParam,
     });
 
   } catch (err: any) {
