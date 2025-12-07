@@ -62,9 +62,11 @@ export default async function handler(req: any, res: any) {
   });
 
   // Log the error for debugging
-  if (userErr) {
-    console.error("CREATE USER ERROR:", userErr);
+  // Ignore if email already exists
+  if (userErr && userErr.code !== "email_exists") {
+   return res.status(500).json({ ok: false, error: userErr });
   }
+
 
   // Allow "email already exists" → NOT a real error
   if (userErr && userErr.code !== "email_exists") {
