@@ -9,10 +9,10 @@ export function ReferralSection() {
 
   if (!user) return null;
 
-  // Your bot username (NO @ symbol)
+  // ✅ Your bot username (NO @ symbol, this MUST be exactly your BotFather username)
   const BOT_USERNAME = "Zeroverse_app_bot";
 
-  // User-specific referral link
+  // ✅ This is the only place the link is generated
   const referralLink = `https://t.me/${BOT_USERNAME}?start=${user.tg_id}`;
 
   const handleCopy = async () => {
@@ -34,7 +34,7 @@ export function ReferralSection() {
         Invite your friends using your unique link and earn{" "}
         <span className="font-semibold text-primary">200 points</span> for each friend
         who joins. Your friend also receives{" "}
-        <span className="font-semibold text-primary">200 points</span>.  
+        <span className="font-semibold text-primary">200 points</span>.
       </p>
 
       {/* Referral Link Box */}
