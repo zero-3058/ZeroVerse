@@ -2,13 +2,13 @@
 import crypto from "crypto";
 import { createClient } from "@supabase/supabase-js";
 
-// Backend Supabase admin client (service role)
+// Supabase Admin Client (service role key)
 const supabase = createClient(
   process.env.SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-// Validate Telegram initData signature
+// Validate Telegram initData
 function validateTelegram(initData: string, botToken: string) {
   const params = new URLSearchParams(initData);
   const items: string[] = [];
@@ -50,7 +50,7 @@ export default async function handler(req: any, res: any) {
       return res.status(401).json({ ok: false, error: "Invalid signature" });
     }
 
-    // Extract user
+    // Extract telegram user
     const params = new URLSearchParams(initData);
     const userRaw = params.get("user");
     const startParam = params.get("start_param") || null;
@@ -67,7 +67,7 @@ export default async function handler(req: any, res: any) {
       : null;
     const tg_username = tgUser.username ?? null;
 
-    // Check if user already exists
+    // Check if existing user
     const { data: existingUser } = await supabase
       .from("users")
       .select("*")
@@ -75,59 +75,57 @@ export default async function handler(req: any, res: any) {
       .maybeSingle();
 
     let isNewUser = false;
-    let newUserRecord = existingUser;
 
+    // ----------------------
     // CREATE NEW USER
+    // ----------------------
     if (!existingUser) {
       isNewUser = true;
 
-      const { data: newUser, error: insertErr } = await supabase
+      const { error: insertErr } = await supabase
         .from("users")
         .insert({
           tg_id,
           tg_name,
           tg_username,
-          zero_points: 200, // new user reward
+          zero_points: 200, // NEW USER BONUS
           referral_count: 0,
           referral_points_earned: 0,
           created_at: new Date().toISOString(),
-        })
-        .select()
-        .single();
+        });
 
       if (insertErr) {
         console.error(insertErr);
         return res.status(500).json({ ok: false, error: insertErr.message });
       }
-
-      newUserRecord = newUser;
     } else {
-      // UPDATE EXISTING USER INFO
-      const { data: updatedUser, error: updateErr } = await supabase
+      // ----------------------
+      // UPDATE EXISTING USER INFORMATION
+      // ----------------------
+      const { error: updateErr } = await supabase
         .from("users")
         .update({
           tg_name,
           tg_username,
           updated_at: new Date().toISOString(),
         })
-        .eq("tg_id", tg_id)
-        .select()
-        .single();
+        .eq("tg_id", tg_id);
 
       if (updateErr) {
+        console.error(updateErr);
         return res.status(500).json({ ok: false, error: updateErr.message });
       }
-
-      newUserRecord = updatedUser;
     }
 
-    // REFERRAL PROCESS ONLY IF USER IS NEW
+    // ----------------------
+    // REFERRAL HANDLING
+    // ONLY FOR NEW USERS
+    // ----------------------
     if (isNewUser && startParam) {
       const referrerTgId = startParam;
 
-      // Prevent self-referral
+      // Prevent self-referrals
       if (referrerTgId !== tg_id) {
-        // Find the referrer
         const { data: referrer } = await supabase
           .from("users")
           .select("*")
@@ -135,19 +133,19 @@ export default async function handler(req: any, res: any) {
           .maybeSingle();
 
         if (referrer) {
-          // Set new user's referrer_id
+          // Set the referrer_id on new user
           await supabase
             .from("users")
             .update({
               referrer_id: referrer.id,
             })
-            .eq("id", newUserRecord.id);
+            .eq("tg_id", tg_id);
 
-          // REWARD REFERRER
+          // Reward the referrer
           await supabase
             .from("users")
             .update({
-              zero_points: (referrer.zero_points || 0) + 200, // Reward
+              zero_points: (referrer.zero_points || 0) + 200,
               referral_count: (referrer.referral_count || 0) + 1,
               referral_points_earned:
                 (referrer.referral_points_earned || 0) + 200,
@@ -157,9 +155,24 @@ export default async function handler(req: any, res: any) {
       }
     }
 
+    // ----------------------------------------------------
+    // 🔥 FINAL FIX: RETURN *LATEST* USER FROM DATABASE
+    // This ensures points NEVER reset after earning.
+    // ----------------------------------------------------
+    const { data: freshUser, error: freshErr } = await supabase
+      .from("users")
+      .select("*")
+      .eq("tg_id", tg_id)
+      .single();
+
+    if (freshErr) {
+      console.error("Failed to fetch updated user:", freshErr);
+      return res.status(500).json({ ok: false, error: freshErr.message });
+    }
+
     return res.json({
       ok: true,
-      appUser: newUserRecord,
+      appUser: freshUser,
       startParam: startParam || null,
     });
   } catch (err: any) {
