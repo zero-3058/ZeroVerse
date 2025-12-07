@@ -3,6 +3,7 @@ export interface User {
   tg_id: string;
   tg_name: string;
   tg_username?: string;
+  photo_url?: string | null;
   zero_points: number;
   ton_wallet_address?: string;
   referrer_id?: string;
