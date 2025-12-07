@@ -109,6 +109,7 @@ export function HomeScreen() {
         <h1 className="text-3xl font-bold font-display mb-1">Ready to Win?</h1>
         <p className="text-muted-foreground">Welcome back, {userName}</p>
       </div>
+      <PointsDisplay />
 
       {/* Featured Game */}
       {featuredGame && (
