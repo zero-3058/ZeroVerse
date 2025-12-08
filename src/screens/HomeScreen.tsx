@@ -1,3 +1,4 @@
+// src/screens/HomeScreen.tsx
 import React, { useState } from "react";
 import { useUser } from "@/contexts/UserContext";
 import { PointsDisplay } from "@/components/home/PointsDisplay";
@@ -14,13 +15,14 @@ export function HomeScreen() {
   const { user, telegramUser, updateUserPoints, addTransaction } = useUser();
   const [activeGame, setActiveGame] = useState<string | null>(null);
   const [completedTasks, setCompletedTasks] = useState<string[]>([]);
+  const [gameEnded, setGameEnded] = useState(false); // lock to prevent double rewards
 
   const userName = user?.tg_name || telegramUser?.name || "Player";
   const featuredGame = games.find((g) => g.isFeatured);
   const otherGames = games.filter((g) => !g.isFeatured);
 
   /** -----------------------------------------
-   * SAVE TRANSACTION TO DB
+   * Save transaction to DB (for history)
    * ----------------------------------------- */
   const saveTransactionToDB = async (tx: Transaction) => {
     try {
@@ -31,7 +33,9 @@ export function HomeScreen() {
       });
 
       const data = await response.json();
-      if (!data.ok) console.error("Transaction save failed:", data.error);
+      if (!data.ok) {
+        console.error("Transaction save failed:", data.error);
+      }
     } catch (err) {
       console.error("addTransaction error:", err);
     }
@@ -42,10 +46,14 @@ export function HomeScreen() {
   };
 
   /** -----------------------------------------
-   * GAME OVER → ADD POINTS + TRANSACTION
+   * GAME OVER → UPDATE POINTS + TRANSACTION
    * ----------------------------------------- */
   const handleGameOver = async (score: number) => {
     if (!user) return;
+
+    // prevent double-calling from SnakeGame or re-renders
+    if (gameEnded) return;
+    setGameEnded(true);
 
     const pointsEarned = score;
     const newPoints = (user.zero_points || 0) + pointsEarned;
@@ -53,25 +61,34 @@ export function HomeScreen() {
     await updateUserPoints(newPoints);
 
     const tx: Transaction = {
-      id: Date.now().toString(),
+      id: Date.now().toString(), // fine for now; DB also has its own UUID
       user_id: user.id,
-      type: "game" as const, // ⭐ FIX
-      description: `${activeGame?.charAt(0).toUpperCase()}${activeGame?.slice(1)} Game Reward`,
+      type: "game",
+      description: `${activeGame?.charAt(0).toUpperCase()}${activeGame?.slice(
+        1
+      )} Game Reward`,
       amount: pointsEarned,
       created_at: new Date().toISOString(),
     };
 
-    addTransaction(tx);      // local
-    saveTransactionToDB(tx); // DB
+    addTransaction(tx); // update local list
+    saveTransactionToDB(tx); // persist in Supabase
 
     toast({
       title: "Game Complete!",
       description: `You earned ${pointsEarned} zero points!`,
     });
+
+    // allow rewards again for the next game after a short delay
+    setTimeout(() => {
+      setGameEnded(false);
+    }, 500);
+
+    setActiveGame(null);
   };
 
   /** -----------------------------------------
-   * TASK COMPLETE → ADD POINTS + TRANSACTION
+   * TASK COMPLETE → UPDATE POINTS + TRANSACTION
    * ----------------------------------------- */
   const handleCompleteTask = async (taskId: string) => {
     if (!user) return;
@@ -85,15 +102,14 @@ export function HomeScreen() {
     const tx: Transaction = {
       id: Date.now().toString(),
       user_id: user.id,
-      type: "task" as const, // ⭐ FIX
+      type: "task",
       description: task.title,
       amount: task.reward,
       created_at: new Date().toISOString(),
     };
 
-    addTransaction(tx);      // local
-    saveTransactionToDB(tx); // DB
-
+    addTransaction(tx);
+    saveTransactionToDB(tx);
     setCompletedTasks((prev) => [...prev, taskId]);
 
     toast({
@@ -106,15 +122,14 @@ export function HomeScreen() {
     setActiveGame(null);
   };
 
+  // Render Snake game fullscreen
   if (activeGame === "snake") {
     return (
-      <SnakeGame
-        onGameOver={handleGameOver}
-        onBack={handleBackFromGame}
-      />
+      <SnakeGame onGameOver={handleGameOver} onBack={handleBackFromGame} />
     );
   }
 
+  // Placeholder for other games
   if (activeGame) {
     return (
       <div className="fixed inset-0 bg-background z-50 flex flex-col items-center justify-center p-6">
@@ -131,6 +146,7 @@ export function HomeScreen() {
 
   return (
     <div className="pb-24 space-y-6">
+      {/* Welcome Section */}
       <div className="animate-fade-in">
         <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary/10 border border-primary/20 mb-3">
           <PointsIcon className="w-4 h-4 text-primary" />
@@ -146,6 +162,7 @@ export function HomeScreen() {
 
       <PointsDisplay />
 
+      {/* Featured Game */}
       {featuredGame && (
         <GameCard
           game={featuredGame}
@@ -154,6 +171,7 @@ export function HomeScreen() {
         />
       )}
 
+      {/* Game Library */}
       <section>
         <h2 className="text-lg font-semibold font-display mb-3">
           Game Library
@@ -165,12 +183,11 @@ export function HomeScreen() {
         </div>
       </section>
 
+      {/* Tasks */}
       <section>
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-lg font-semibold font-display">Tasks</h2>
-          <span className="text-primary text-sm font-medium">
-            View All
-          </span>
+          <span className="text-primary text-sm font-medium">View All</span>
         </div>
         <div className="space-y-3">
           {tasks.slice(0, 3).map((task) => (
