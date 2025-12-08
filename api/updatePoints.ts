@@ -1,6 +1,8 @@
 // api/updatePoints.ts
 import { createClient } from "@supabase/supabase-js";
-console.log("🎮 GAME POINTS API CALLED");
+
+console.log("🔥 UPDATE POINTS API CALLED");
+
 const supabase = createClient(
   process.env.SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -18,37 +20,33 @@ export default async function handler(req: any, res: any) {
       return res.status(400).json({ ok: false, error: "Missing fields" });
     }
 
-    // 1️⃣ Fetch existing user points
-    const { data: existingUser, error: fetchErr } = await supabase
+    // 1️⃣ Load user with UUID
+    const { data: user, error: userErr } = await supabase
       .from("users")
-      .select("zero_points")
+      .select("*")
       .eq("tg_id", tg_id)
       .single();
 
-    if (fetchErr) {
-      console.error("Fetch user error:", fetchErr);
-      return res.status(500).json({ ok: false, error: fetchErr.message });
+    if (userErr || !user) {
+      return res.status(404).json({ ok: false, error: "User not found" });
     }
 
-    const currentPoints = existingUser?.zero_points ?? 0;
+    const updatedPoints = user.zero_points + newPoints;
 
-    // 2️⃣ ADD newPoints to existing points
-    const updatedPoints = currentPoints + newPoints;
-
-    // 3️⃣ Update points
-    const { data, error } = await supabase
+    // 2️⃣ Update using UUID (correct!)
+    const { data: updated, error: updateErr } = await supabase
       .from("users")
       .update({ zero_points: updatedPoints })
-      .eq("tg_id", tg_id)
+      .eq("id", user.id) // ✔ FIXED
       .select()
       .single();
 
-    if (error) {
-      console.error("Update points error:", error);
-      return res.status(500).json({ ok: false, error: error.message });
+    if (updateErr) {
+      console.error("Update points error:", updateErr);
+      return res.status(500).json({ ok: false, error: updateErr.message });
     }
 
-    return res.json({ ok: true, user: data });
+    return res.json({ ok: true, user: updated });
   } catch (err: any) {
     console.error("Update points handler error:", err);
     return res.status(500).json({ ok: false, error: err.message });

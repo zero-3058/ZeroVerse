@@ -2,7 +2,6 @@
 import crypto from "crypto";
 import { createClient } from "@supabase/supabase-js";
 
-// Supabase Admin Client
 const supabase = createClient(
   process.env.SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -50,7 +49,6 @@ export default async function handler(req: any, res: any) {
       return res.status(401).json({ ok: false, error: "Invalid signature" });
     }
 
-    // Extract user info
     const params = new URLSearchParams(initData);
     const userRaw = params.get("user");
     const startParam = params.get("start_param") || null;
@@ -76,7 +74,7 @@ export default async function handler(req: any, res: any) {
     let isNewUser = false;
     let userRecord = existingUser;
 
-    // 🟢 CREATE NEW USER
+    // CREATE NEW USER (no points given here!)
     if (!existingUser) {
       isNewUser = true;
 
@@ -87,7 +85,7 @@ export default async function handler(req: any, res: any) {
           tg_name,
           tg_username,
           photo_url,
-          zero_points: 200,
+          zero_points: 0,     // ⭐ NO START POINTS HERE
           referral_count: 0,
           referral_points_earned: 0,
           created_at: new Date().toISOString(),
@@ -104,7 +102,7 @@ export default async function handler(req: any, res: any) {
       userRecord = newUser;
     }
 
-    // 🟢 UPDATE EXISTING USER
+    // UPDATE EXISTING USER
     else {
       const { data: updatedUser, error: updateErr } = await supabase
         .from("users")
@@ -126,53 +124,13 @@ export default async function handler(req: any, res: any) {
       userRecord = updatedUser;
     }
 
-    // 🟢 REFERRAL SYSTEM (ONLY NEW USERS)
-    if (isNewUser && startParam && startParam !== tg_id) {
-      const referrerTgId = startParam;
-
-      const { data: referrer } = await supabase
-        .from("users")
-        .select("*")
-        .eq("tg_id", referrerTgId)
-        .maybeSingle();
-
-      if (referrer) {
-        // Link referrer
-        await supabase
-          .from("users")
-          .update({ referrer_id: referrer.id })
-          .eq("id", userRecord.id);
-
-        // Reward referrer
-        await supabase
-          .from("users")
-          .update({
-            zero_points: referrer.zero_points + 200,
-            referral_count: referrer.referral_count + 1,
-            referral_points_earned: referrer.referral_points_earned + 200,
-          })
-          .eq("id", referrer.id);
-      }
-    }
-
-    // 🟢 ALWAYS FETCH FINAL USER (IMPORTANT)
-    const { data: finalUser, error: finalErr } = await supabase
-      .from("users")
-      .select("*")
-      .eq("tg_id", tg_id)
-      .single();
-
-    if (finalErr) {
-      console.error(finalErr);
-      return res.status(500).json({ ok: false, error: finalErr.message });
-    }
-
-    console.log("FINAL USER SENT TO FRONTEND:", finalUser);
+    // ⭐ NO REFERRAL REWARD HERE
+    // This is now handled only in `/api/referralReward.ts`
 
     return res.json({
       ok: true,
-      appUser: finalUser,
-      startParam,
+      appUser: userRecord,
+      startParam, // send to frontend so it calls referralReward
     });
   } catch (err: any) {
     console.error("telegram auth error:", err);

@@ -24,18 +24,18 @@ export default async function handler(req: any, res: any) {
       return res.status(400).json({ ok: false, error: "Self referral blocked" });
     }
 
-    // Load new user
+    // Load new user (telegram id)
     const { data: newUser, error: newUserErr } = await supabase
       .from("users")
       .select("*")
       .eq("tg_id", newUserTgId)
-      .maybeSingle();
+      .single();
 
     if (!newUser || newUserErr) {
       return res.status(404).json({ ok: false, error: "New user not found" });
     }
 
-    // If user already has a referrer, prevent duplicate reward
+    // Prevent duplicate reward
     if (newUser.referrer_id) {
       return res.json({ ok: true, message: "Referral already rewarded" });
     }
@@ -45,34 +45,34 @@ export default async function handler(req: any, res: any) {
       .from("users")
       .select("*")
       .eq("tg_id", referrerTgId)
-      .maybeSingle();
+      .single();
 
     if (!referrer || refErr) {
       return res.status(404).json({ ok: false, error: "Referrer not found" });
     }
 
-    // ⭐ Give New User +200
+    // ⭐ NEW USER +200
     const updatedNewUserPoints = newUser.zero_points + 200;
 
     await supabase
       .from("users")
       .update({
         zero_points: updatedNewUserPoints,
-        referrer_id: referrer.id, // link referrer
+        referrer_id: referrer.id, // link referrer UUID
       })
-      .eq("id", newUser.id);
+      .eq("id", newUser.id); // using UUID
 
-    // Transaction for new user
+    // New user transaction (FIXED UUID)
     await supabase.from("transactions").insert({
       id: crypto.randomUUID(),
-      user_id: newUserTgId,
+      user_id: newUser.id, // FIXED
       type: "referral",
       description: "Referral bonus for joining",
       amount: 200,
       created_at: new Date().toISOString(),
     });
 
-    // ⭐ Give Referrer +200
+    // ⭐ REFERRER +200
     const updatedRefPoints = referrer.zero_points + 200;
 
     await supabase
@@ -80,14 +80,14 @@ export default async function handler(req: any, res: any) {
       .update({
         zero_points: updatedRefPoints,
         referral_count: referrer.referral_count + 1,
-        referral_points_earned: referrer.referral_points_earned + 200
+        referral_points_earned: referrer.referral_points_earned + 200,
       })
-      .eq("id", referrer.id);
+      .eq("id", referrer.id); // UUID
 
-    // Transaction for referrer
+    // Referrer transaction (FIXED UUID)
     await supabase.from("transactions").insert({
       id: crypto.randomUUID(),
-      user_id: referrerTgId,
+      user_id: referrer.id, // FIXED
       type: "referral",
       description: `Referral reward for inviting ${newUserTgId}`,
       amount: 200,
