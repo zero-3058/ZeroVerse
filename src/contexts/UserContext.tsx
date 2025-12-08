@@ -51,6 +51,93 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   };
 
   /** ---------------------------------------------
+   * REFERRAL SYSTEM — both users get 200 points
+   * --------------------------------------------- */
+  const handleReferral = async (tgUserId: string) => {
+    try {
+      const startParam = (window as any)?.Telegram?.WebApp?.initDataUnsafe?.start_param;
+      if (!startParam) return;
+
+      const referrerId = String(startParam);
+      const newUserId = String(tgUserId);
+
+      if (referrerId === newUserId) {
+        console.log("Self-referral blocked");
+        return;
+      }
+
+      console.log("Referral detected! Referrer:", referrerId);
+
+      // Check if referral already applied
+      const { data: existing, error: checkErr } = await supabase
+        .from("users")
+        .select("referrer_id")
+        .eq("tg_id", newUserId)
+        .maybeSingle();
+
+      if (checkErr) {
+        console.error("Referral check error:", checkErr);
+        return;
+      }
+
+      if (existing?.referrer_id) {
+        console.log("Referral already rewarded earlier");
+        return;
+      }
+
+      // Save referrer id
+      await supabase
+        .from("users")
+        .update({ referrer_id: referrerId })
+        .eq("tg_id", newUserId);
+
+      // ⭐ NEW USER GETS 200
+      await fetch("/api/updatePoints", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tg_id: newUserId, newPoints: (user?.zero_points ?? 0) + 200 }),
+      });
+
+      await fetch("/api/addTransaction", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: crypto.randomUUID(),
+          user_id: newUserId,
+          type: "referral",
+          description: "Referral bonus for joining",
+          amount: 200,
+          created_at: new Date().toISOString(),
+        }),
+      });
+
+      // ⭐ REFERRER ALSO GETS 200
+      await fetch("/api/updatePoints", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tg_id: referrerId, newPoints: 200 }), // backend should ADD not replace
+      });
+
+      await fetch("/api/addTransaction", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: crypto.randomUUID(),
+          user_id: referrerId,
+          type: "referral",
+          description: `Referral reward for inviting user ${newUserId}`,
+          amount: 200,
+          created_at: new Date().toISOString(),
+        }),
+      });
+
+      console.log("Referral rewards applied successfully!");
+    } catch (err) {
+      console.error("Referral fatal error:", err);
+    }
+  };
+
+  /** ---------------------------------------------
    * Authenticate user via backend + load profile
    * --------------------------------------------- */
   const refreshUser = useCallback(async () => {
@@ -85,10 +172,13 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       console.log("Loaded user:", appUser);
       console.log("User ID used for transactions:", appUser?.id);
 
-      // ---- Transaction load fix ----
+      /** 🟢 RUN REFERRAL LOGIC HERE */
+      await handleReferral(appUser.tg_id);
+
+      // Load transactions
       const userId = appUser?.id;
       if (!userId) {
-        console.error("❌ No user ID found. Cannot load transactions.");
+        console.error("❌ No user ID. Cannot load transactions.");
         setTransactions([]);
         return;
       }
@@ -138,7 +228,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     refreshUser();
-  }, []); // ⬅️ FIXED: empty dependency to prevent infinite re-renders
+  }, []);
 
   return (
     <UserContext.Provider

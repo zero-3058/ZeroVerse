@@ -18,9 +18,27 @@ export default async function handler(req: any, res: any) {
       return res.status(400).json({ ok: false, error: "Missing fields" });
     }
 
+    // 1️⃣ Fetch existing user points
+    const { data: existingUser, error: fetchErr } = await supabase
+      .from("users")
+      .select("zero_points")
+      .eq("tg_id", tg_id)
+      .single();
+
+    if (fetchErr) {
+      console.error("Fetch user error:", fetchErr);
+      return res.status(500).json({ ok: false, error: fetchErr.message });
+    }
+
+    const currentPoints = existingUser?.zero_points ?? 0;
+
+    // 2️⃣ ADD newPoints to existing points
+    const updatedPoints = currentPoints + newPoints;
+
+    // 3️⃣ Update points
     const { data, error } = await supabase
       .from("users")
-      .update({ zero_points: newPoints })
+      .update({ zero_points: updatedPoints })
       .eq("tg_id", tg_id)
       .select()
       .single();
