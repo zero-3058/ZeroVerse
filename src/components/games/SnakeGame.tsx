@@ -315,7 +315,7 @@ export function SnakeGame({ onGameOver, onBack }: SnakeGameProps) {
 
       {/* CONTROL BUTTONS (premium, gaming style) */}
       {gameState === "playing" && (
-        <div className="pb-6 flex flex-col items-center gap-3">
+        <div className="pb-32 mt-4 flex flex-col items-center gap-4">
           {/* UP */}
           <button
             onClick={() => changeDirection("UP")}
