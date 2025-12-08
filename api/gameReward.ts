@@ -5,6 +5,7 @@ const supabase = createClient(
   process.env.SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
+console.log("🎮 GAME REWARD API CALLED");
 
 export default async function handler(req: any, res: any) {
   if (req.method !== "POST") {
