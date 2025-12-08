@@ -29,6 +29,8 @@ export interface Transaction {
   created_at: string;
 }
 
+
+
 export interface GameSession {
   id: string;
   user_id: string;
