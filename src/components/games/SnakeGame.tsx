@@ -1,6 +1,14 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { ArrowLeft, Play, RotateCcw, ArrowUp, ArrowDown, ArrowLeft as LeftIcon, ArrowRight as RightIcon } from 'lucide-react';
-import { PointsIcon } from '@/components/icons/GameIcons';
+import React, { useEffect, useRef, useState, useCallback } from "react";
+import {
+  ArrowLeft,
+  Play,
+  RotateCcw,
+  ArrowUp,
+  ArrowDown,
+  ArrowLeft as LeftIcon,
+  ArrowRight as RightIcon,
+} from "lucide-react";
+import { PointsIcon } from "@/components/icons/GameIcons";
 
 interface SnakeGameProps {
   onGameOver: (score: number) => void;
@@ -11,38 +19,48 @@ const GRID_SIZE = 20;
 const CELL_SIZE = 15;
 const INITIAL_SPEED = 150;
 
-type Direction = 'UP' | 'DOWN' | 'LEFT' | 'RIGHT';
+type Direction = "UP" | "DOWN" | "LEFT" | "RIGHT";
 type Position = { x: number; y: number };
 
 export function SnakeGame({ onGameOver, onBack }: SnakeGameProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [gameState, setGameState] = useState<'idle' | 'playing' | 'over'>('idle');
+  const [gameState, setGameState] = useState<"idle" | "playing" | "over">(
+    "idle"
+  );
   const [score, setScore] = useState(0);
-  const [gameOverTriggered, setGameOverTriggered] = useState(false); // FIX double gameOver
+  const [gameOverTriggered, setGameOverTriggered] = useState(false);
 
   const [highScore, setHighScore] = useState(() => {
-    const saved = localStorage.getItem('snake_highscore');
+    const saved = localStorage.getItem("snake_highscore");
     return saved ? parseInt(saved) : 0;
   });
 
   const snakeRef = useRef<Position[]>([{ x: 10, y: 10 }]);
-  const directionRef = useRef<Direction>('RIGHT');
+  const directionRef = useRef<Direction>("RIGHT");
   const foodRef = useRef<Position>({ x: 15, y: 10 });
   const gameLoopRef = useRef<number>();
 
+  /** ---------------------------------------------
+   * CHANGE DIRECTION (safe turn)
+   * --------------------------------------------- */
   const changeDirection = (dir: Direction) => {
     const cur = directionRef.current;
 
     if (
-      (dir === 'LEFT' && cur === 'RIGHT') ||
-      (dir === 'RIGHT' && cur === 'LEFT') ||
-      (dir === 'UP' && cur === 'DOWN') ||
-      (dir === 'DOWN' && cur === 'UP')
-    ) return;
+      (dir === "LEFT" && cur === "RIGHT") ||
+      (dir === "RIGHT" && cur === "LEFT") ||
+      (dir === "UP" && cur === "DOWN") ||
+      (dir === "DOWN" && cur === "UP")
+    ) {
+      return;
+    }
 
     directionRef.current = dir;
   };
 
+  /** ---------------------------------------------
+   * SPAWN FOOD
+   * --------------------------------------------- */
   const generateFood = useCallback(() => {
     let newFood: Position;
     do {
@@ -50,27 +68,37 @@ export function SnakeGame({ onGameOver, onBack }: SnakeGameProps) {
         x: Math.floor(Math.random() * GRID_SIZE),
         y: Math.floor(Math.random() * GRID_SIZE),
       };
-    } while (snakeRef.current.some(seg => seg.x === newFood.x && seg.y === newFood.y));
+    } while (
+      snakeRef.current.some(
+        (seg) => seg.x === newFood.x && seg.y === newFood.y
+      )
+    );
     foodRef.current = newFood;
   }, []);
 
+  /** ---------------------------------------------
+   * RESET GAME
+   * --------------------------------------------- */
   const resetGame = useCallback(() => {
     snakeRef.current = [{ x: 10, y: 10 }];
-    directionRef.current = 'RIGHT';
+    directionRef.current = "RIGHT";
     generateFood();
     setScore(0);
     setGameOverTriggered(false);
   }, [generateFood]);
 
+  /** ---------------------------------------------
+   * DRAW CANVAS
+   * --------------------------------------------- */
   const draw = useCallback(() => {
     const canvas = canvasRef.current;
-    const ctx = canvas?.getContext('2d');
+    const ctx = canvas?.getContext("2d");
     if (!ctx || !canvas) return;
 
-    ctx.fillStyle = '#0a0a12';
+    ctx.fillStyle = "#0a0a12";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    ctx.strokeStyle = '#1a1a28';
+    ctx.strokeStyle = "#1a1a28";
     ctx.lineWidth = 0.5;
 
     for (let i = 0; i <= GRID_SIZE; i++) {
@@ -86,8 +114,8 @@ export function SnakeGame({ onGameOver, onBack }: SnakeGameProps) {
     }
 
     const food = foodRef.current;
-    ctx.fillStyle = '#00d4aa';
-    ctx.shadowColor = '#00d4aa';
+    ctx.fillStyle = "#00d4aa";
+    ctx.shadowColor = "#00d4aa";
     ctx.shadowBlur = 10;
     ctx.beginPath();
     ctx.arc(
@@ -112,11 +140,11 @@ export function SnakeGame({ onGameOver, onBack }: SnakeGameProps) {
       );
 
       if (isHead) {
-        gradient.addColorStop(0, '#8b5cf6');
-        gradient.addColorStop(1, '#6366f1');
+        gradient.addColorStop(0, "#8b5cf6");
+        gradient.addColorStop(1, "#6366f1");
       } else {
-        gradient.addColorStop(0, '#6366f1');
-        gradient.addColorStop(1, '#4f46e5');
+        gradient.addColorStop(0, "#6366f1");
+        gradient.addColorStop(1, "#4f46e5");
       }
 
       ctx.fillStyle = gradient;
@@ -132,41 +160,57 @@ export function SnakeGame({ onGameOver, onBack }: SnakeGameProps) {
     });
   }, []);
 
+  /** ---------------------------------------------
+   * SAFE GAME OVER
+   * --------------------------------------------- */
   const triggerGameOver = (finalScore: number) => {
-    if (gameOverTriggered) return; // FIX double firing
+    if (gameOverTriggered) return;
     setGameOverTriggered(true);
 
-    setGameState('over');
+    setGameState("over");
 
     if (finalScore > highScore) {
       setHighScore(finalScore);
-      localStorage.setItem('snake_highscore', String(finalScore));
+      localStorage.setItem("snake_highscore", String(finalScore));
     }
 
     onGameOver(finalScore);
   };
 
+  /** ---------------------------------------------
+   * GAME LOOP
+   * --------------------------------------------- */
   const gameLoop = useCallback(() => {
     const snake = snakeRef.current;
     const direction = directionRef.current;
     const head = { ...snake[0] };
 
     switch (direction) {
-      case 'UP': head.y--; break;
-      case 'DOWN': head.y++; break;
-      case 'LEFT': head.x--; break;
-      case 'RIGHT': head.x++; break;
+      case "UP":
+        head.y--;
+        break;
+      case "DOWN":
+        head.y++;
+        break;
+      case "LEFT":
+        head.x--;
+        break;
+      case "RIGHT":
+        head.x++;
+        break;
     }
 
     if (
-      head.x < 0 || head.x >= GRID_SIZE ||
-      head.y < 0 || head.y >= GRID_SIZE
+      head.x < 0 ||
+      head.x >= GRID_SIZE ||
+      head.y < 0 ||
+      head.y >= GRID_SIZE
     ) {
       triggerGameOver(score);
       return;
     }
 
-    if (snake.some(seg => seg.x === head.x && seg.y === head.y)) {
+    if (snake.some((seg) => seg.x === head.x && seg.y === head.y)) {
       triggerGameOver(score);
       return;
     }
@@ -174,9 +218,9 @@ export function SnakeGame({ onGameOver, onBack }: SnakeGameProps) {
     snakeRef.current = [head, ...snake];
 
     if (head.x === foodRef.current.x && head.y === foodRef.current.y) {
-      setScore(prev => prev + 10);
+      setScore((prev) => prev + 10);
       generateFood();
-      window.Telegram?.WebApp?.HapticFeedback?.impactOccurred('light');
+      window.Telegram?.WebApp?.HapticFeedback?.impactOccurred("light");
     } else {
       snakeRef.current.pop();
     }
@@ -184,20 +228,30 @@ export function SnakeGame({ onGameOver, onBack }: SnakeGameProps) {
     draw();
   }, [score, draw, generateFood]);
 
+  /** ---------------------------------------------
+   * START GAME
+   * --------------------------------------------- */
   const startGame = () => {
     resetGame();
-    setGameState('playing');
+    setGameState("playing");
   };
 
+  /** ---------------------------------------------
+   * INTERVAL LOOP
+   * --------------------------------------------- */
   useEffect(() => {
-    if (gameState === 'playing') {
+    if (gameState === "playing") {
       gameLoopRef.current = window.setInterval(gameLoop, INITIAL_SPEED);
     }
-    return () => gameLoopRef.current && clearInterval(gameLoopRef.current);
+    return () =>
+      gameLoopRef.current && clearInterval(gameLoopRef.current);
   }, [gameState, gameLoop]);
 
   useEffect(() => draw(), [draw]);
 
+  /** ---------------------------------------------
+   * UI
+   * --------------------------------------------- */
   return (
     <div className="fixed inset-0 bg-background z-50 flex flex-col">
       {/* Header */}
@@ -212,7 +266,7 @@ export function SnakeGame({ onGameOver, onBack }: SnakeGameProps) {
         </div>
       </div>
 
-      {/* Game area */}
+      {/* Game Area */}
       <div className="flex-1 flex items-center justify-center p-4">
         <div className="relative">
           <canvas
@@ -222,12 +276,14 @@ export function SnakeGame({ onGameOver, onBack }: SnakeGameProps) {
             className="rounded-xl border border-border"
           />
 
-          {/* Start overlay */}
-          {gameState === 'idle' && (
+          {/* Idle Screen */}
+          {gameState === "idle" && (
             <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/80 rounded-xl">
-              <h3 className="text-xl font-bold font-display mb-2">Snake Game</h3>
+              <h3 className="text-xl font-bold font-display mb-2">
+                Snake Game
+              </h3>
               <p className="text-muted-foreground text-sm mb-4">
-                Swipe, use arrows, or buttons to move
+                Swipe, use arrows or buttons to move
               </p>
               <button onClick={startGame} className="btn-primary">
                 <Play className="w-4 h-4" />
@@ -236,11 +292,15 @@ export function SnakeGame({ onGameOver, onBack }: SnakeGameProps) {
             </div>
           )}
 
-          {/* Game Over overlay */}
-          {gameState === 'over' && (
+          {/* Game Over */}
+          {gameState === "over" && (
             <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/80 rounded-xl">
-              <h3 className="text-xl font-bold font-display mb-1">Game Over!</h3>
-              <p className="text-3xl font-bold points-text mb-1">{score} pts</p>
+              <h3 className="text-xl font-bold font-display mb-1">
+                Game Over!
+              </h3>
+              <p className="text-3xl font-bold points-text mb-1">
+                {score} pts
+              </p>
               <p className="text-muted-foreground text-sm mb-4">
                 High Score: {highScore}
               </p>
@@ -253,37 +313,40 @@ export function SnakeGame({ onGameOver, onBack }: SnakeGameProps) {
         </div>
       </div>
 
-      {/* NEW BUTTON CONTROLS */}
-      {gameState === 'playing' && (
+      {/* CONTROL BUTTONS (premium, gaming style) */}
+      {gameState === "playing" && (
         <div className="pb-6 flex flex-col items-center gap-3">
+          {/* UP */}
           <button
-            onClick={() => changeDirection('UP')}
-            className="p-3 rounded-full bg-secondary shadow"
+            onClick={() => changeDirection("UP")}
+            className="p-4 rounded-full bg-secondary border border-white/5 shadow-xl active:scale-90 transition"
           >
-            <ArrowUp className="w-6 h-6" />
+            <ArrowUp className="w-6 h-6 text-primary" />
           </button>
 
-          <div className="flex items-center gap-8">
+          {/* LEFT / RIGHT */}
+          <div className="flex items-center gap-12">
             <button
-              onClick={() => changeDirection('LEFT')}
-              className="p-3 rounded-full bg-secondary shadow"
+              onClick={() => changeDirection("LEFT")}
+              className="p-4 rounded-full bg-secondary border border-white/5 shadow-xl active:scale-90 transition"
             >
-              <LeftIcon className="w-6 h-6" />
+              <LeftIcon className="w-6 h-6 text-primary" />
             </button>
 
             <button
-              onClick={() => changeDirection('RIGHT')}
-              className="p-3 rounded-full bg-secondary shadow"
+              onClick={() => changeDirection("RIGHT")}
+              className="p-4 rounded-full bg-secondary border border-white/5 shadow-xl active:scale-90 transition"
             >
-              <RightIcon className="w-6 h-6" />
+              <RightIcon className="w-6 h-6 text-primary" />
             </button>
           </div>
 
+          {/* DOWN */}
           <button
-            onClick={() => changeDirection('DOWN')}
-            className="p-3 rounded-full bg-secondary shadow"
+            onClick={() => changeDirection("DOWN")}
+            className="p-4 rounded-full bg-secondary border border-white/5 shadow-xl active:scale-90 transition"
           >
-            <ArrowDown className="w-6 h-6" />
+            <ArrowDown className="w-6 h-6 text-primary" />
           </button>
         </div>
       )}
