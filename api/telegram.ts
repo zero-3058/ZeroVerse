@@ -2,7 +2,7 @@
 import crypto from "crypto";
 import { createClient } from "@supabase/supabase-js";
 
-// Backend Supabase admin client (service role)
+// Supabase Admin Client
 const supabase = createClient(
   process.env.SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -50,7 +50,7 @@ export default async function handler(req: any, res: any) {
       return res.status(401).json({ ok: false, error: "Invalid signature" });
     }
 
-    // Extract user and start_param
+    // Extract user info
     const params = new URLSearchParams(initData);
     const userRaw = params.get("user");
     const startParam = params.get("start_param") || null;
@@ -61,11 +61,10 @@ export default async function handler(req: any, res: any) {
 
     const tgUser = JSON.parse(userRaw);
 
-    // Extract Telegram fields
     const tg_id = String(tgUser.id);
     const tg_name = `${tgUser.first_name || ""} ${tgUser.last_name || ""}`.trim();
     const tg_username = tgUser.username ?? null;
-    const photo_url = tgUser.photo_url ?? null; // ⭐ NEW! profile photo
+    const photo_url = tgUser.photo_url ?? null;
 
     // Check if user exists
     const { data: existingUser } = await supabase
@@ -77,7 +76,7 @@ export default async function handler(req: any, res: any) {
     let isNewUser = false;
     let userRecord = existingUser;
 
-    // CREATE USER IF NOT EXISTS
+    // 🟢 CREATE NEW USER
     if (!existingUser) {
       isNewUser = true;
 
@@ -87,11 +86,12 @@ export default async function handler(req: any, res: any) {
           tg_id,
           tg_name,
           tg_username,
-          photo_url,           // ⭐ SAVE PHOTO
-          zero_points: 200,     // welcome reward
+          photo_url,
+          zero_points: 200,
           referral_count: 0,
           referral_points_earned: 0,
           created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
         })
         .select()
         .single();
@@ -104,14 +104,14 @@ export default async function handler(req: any, res: any) {
       userRecord = newUser;
     }
 
-    // UPDATE EXISTING USER ALWAYS
+    // 🟢 UPDATE EXISTING USER
     else {
       const { data: updatedUser, error: updateErr } = await supabase
         .from("users")
         .update({
           tg_name,
           tg_username,
-          photo_url,    // ⭐ KEEP PHOTO UPDATED
+          photo_url,
           updated_at: new Date().toISOString(),
         })
         .eq("tg_id", tg_id)
@@ -126,7 +126,7 @@ export default async function handler(req: any, res: any) {
       userRecord = updatedUser;
     }
 
-    // ⚡ REFERRAL LOGIC ONLY FOR NEW USERS
+    // 🟢 REFERRAL SYSTEM (ONLY NEW USERS)
     if (isNewUser && startParam && startParam !== tg_id) {
       const referrerTgId = startParam;
 
@@ -137,7 +137,7 @@ export default async function handler(req: any, res: any) {
         .maybeSingle();
 
       if (referrer) {
-        // Link new user to referrer
+        // Link referrer
         await supabase
           .from("users")
           .update({ referrer_id: referrer.id })
@@ -147,15 +147,15 @@ export default async function handler(req: any, res: any) {
         await supabase
           .from("users")
           .update({
-            zero_points: (referrer.zero_points || 0) + 200,
-            referral_count: (referrer.referral_count || 0) + 1,
-            referral_points_earned: (referrer.referral_points_earned || 0) + 200,
+            zero_points: referrer.zero_points + 200,
+            referral_count: referrer.referral_count + 1,
+            referral_points_earned: referrer.referral_points_earned + 200,
           })
           .eq("id", referrer.id);
       }
     }
 
-    // ⭐ ALWAYS FETCH FINAL USER AFTER ALL UPDATES
+    // 🟢 ALWAYS FETCH FINAL USER (IMPORTANT)
     const { data: finalUser, error: finalErr } = await supabase
       .from("users")
       .select("*")
@@ -167,12 +167,13 @@ export default async function handler(req: any, res: any) {
       return res.status(500).json({ ok: false, error: finalErr.message });
     }
 
+    console.log("FINAL USER SENT TO FRONTEND:", finalUser);
+
     return res.json({
       ok: true,
       appUser: finalUser,
       startParam,
     });
-
   } catch (err: any) {
     console.error("telegram auth error:", err);
     return res.status(500).json({ ok: false, error: err.message });
