@@ -26,6 +26,9 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   const [telegramUser, setTelegramUser] = useState<any>(null);
   const [isTelegramApp, setIsTelegramApp] = useState(false);
 
+  const [referralProcessed, setReferralProcessed] = useState(false); 
+  // ⚠️ Prevents double referral calls
+
   /** INIT TELEGRAM */
   const initializeTelegram = () => {
     const tg = (window as any).Telegram?.WebApp;
@@ -60,7 +63,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      // Authenticate
+      /** Authenticate user */
       const res = await fetch("/api/telegram", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -74,14 +77,50 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       }
 
       const appUser = data.appUser;
+      const startParam = data.startParam; // The referrer TG ID
       setUser(appUser);
 
       console.log("Loaded user:", appUser);
 
-      /** IMPORTANT:
-       * REMOVE REFERRAL HANDLING HERE.
-       * Referral reward is now ONLY done in api/referralReward.ts.
-       */
+      /** --------------------------------------------
+       * OPTION 3 REFERRAL LOGIC (FRONTEND SIDE)
+       * - Only call referralReward once
+       * - Only for NEW users with no referrer set
+       * -------------------------------------------- */
+      if (
+        startParam &&                 // Link contains a referral ID
+        !appUser.referrer_id &&       // Not rewarded previously
+        !referralProcessed &&         // Avoid calling twice
+        appUser.tg_id !== startParam  // Avoid self-refer
+      ) {
+        console.log("🔗 Calling referralReward:", { 
+          newUser: appUser.tg_id, 
+          referrer: startParam 
+        });
+
+        setReferralProcessed(true);
+
+        await fetch("/api/referralReward", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            newUserTgId: appUser.tg_id,
+            referrerTgId: startParam
+          })
+        });
+
+        // Reload updated user data (points + referrer_id)
+        const { data: updatedUser } = await supabase
+          .from("users")
+          .select("*")
+          .eq("tg_id", appUser.tg_id)
+          .single();
+
+        if (updatedUser) {
+          console.log("Updated user after referral:", updatedUser);
+          setUser(updatedUser);
+        }
+      }
 
       /** Load transactions */
       const { data: tx } = await supabase
@@ -98,7 +137,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [referralProcessed]);
 
   /** SAFE POINT UPDATE */
   const updateUserPoints = useCallback(async (extraPoints: number) => {

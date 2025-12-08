@@ -64,6 +64,8 @@ export default async function handler(req: any, res: any) {
     const tg_username = tgUser.username ?? null;
     const photo_url = tgUser.photo_url ?? null;
 
+    console.log("🔹 Telegram Login:", { tg_id, startParam });
+
     // Check if user exists
     const { data: existingUser } = await supabase
       .from("users")
@@ -71,12 +73,11 @@ export default async function handler(req: any, res: any) {
       .eq("tg_id", tg_id)
       .maybeSingle();
 
-    let isNewUser = false;
     let userRecord = existingUser;
 
-    // CREATE NEW USER (no points given here!)
+    // CREATE NEW USER (NO REWARDS HERE)
     if (!existingUser) {
-      isNewUser = true;
+      console.log("🆕 Creating new user:", tg_id);
 
       const { data: newUser, error: insertErr } = await supabase
         .from("users")
@@ -85,7 +86,7 @@ export default async function handler(req: any, res: any) {
           tg_name,
           tg_username,
           photo_url,
-          zero_points: 0,     // ⭐ NO START POINTS HERE
+          zero_points: 0, // IMPORTANT: No default rewards
           referral_count: 0,
           referral_points_earned: 0,
           created_at: new Date().toISOString(),
@@ -95,14 +96,14 @@ export default async function handler(req: any, res: any) {
         .single();
 
       if (insertErr) {
-        console.error(insertErr);
+        console.error("Insert error:", insertErr);
         return res.status(500).json({ ok: false, error: insertErr.message });
       }
 
       userRecord = newUser;
     }
 
-    // UPDATE EXISTING USER
+    // UPDATE EXISTING USER PROFILE
     else {
       const { data: updatedUser, error: updateErr } = await supabase
         .from("users")
@@ -117,20 +118,20 @@ export default async function handler(req: any, res: any) {
         .single();
 
       if (updateErr) {
-        console.error(updateErr);
+        console.error("Update error:", updateErr);
         return res.status(500).json({ ok: false, error: updateErr.message });
       }
 
       userRecord = updatedUser;
     }
 
-    // ⭐ NO REFERRAL REWARD HERE
-    // This is now handled only in `/api/referralReward.ts`
+    // NO REWARD LOGIC HERE — only return start_param
+    console.log("➡️ Returning user + start_param to frontend");
 
     return res.json({
       ok: true,
       appUser: userRecord,
-      startParam, // send to frontend so it calls referralReward
+      startParam, // Frontend calls /api/referralReward
     });
   } catch (err: any) {
     console.error("telegram auth error:", err);

@@ -19,12 +19,19 @@ export default async function handler(req: any, res: any) {
       return res.status(400).json({ ok: false, error: "Missing fields" });
     }
 
-    // Prevent self referral
+    // Prevent self-referral
     if (newUserTgId === referrerTgId) {
-      return res.status(400).json({ ok: false, error: "Self referral blocked" });
+      return res
+        .status(400)
+        .json({ ok: false, error: "Self referral blocked" });
     }
 
-    // Load new user (telegram id)
+    console.log("🔗 ReferralReward triggered:", {
+      newUserTgId,
+      referrerTgId,
+    });
+
+    // Load new user (Telegram ID)
     const { data: newUser, error: newUserErr } = await supabase
       .from("users")
       .select("*")
@@ -32,11 +39,13 @@ export default async function handler(req: any, res: any) {
       .single();
 
     if (!newUser || newUserErr) {
+      console.error("❌ New user not found:", newUserErr);
       return res.status(404).json({ ok: false, error: "New user not found" });
     }
 
-    // Prevent duplicate reward
+    // Prevent duplicate referral reward
     if (newUser.referrer_id) {
+      console.log("⚠️ Referral already applied earlier.");
       return res.json({ ok: true, message: "Referral already rewarded" });
     }
 
@@ -48,31 +57,37 @@ export default async function handler(req: any, res: any) {
       .single();
 
     if (!referrer || refErr) {
+      console.error("❌ Referrer not found:", refErr);
       return res.status(404).json({ ok: false, error: "Referrer not found" });
     }
 
-    // ⭐ NEW USER +200
-    const updatedNewUserPoints = newUser.zero_points + 200;
+    console.log("🎉 Referral pair found:", {
+      newUserUUID: newUser.id,
+      referrerUUID: referrer.id,
+    });
+
+    // ⭐ NEW USER gets +100
+    const updatedNewUserPoints = newUser.zero_points + 100;
 
     await supabase
       .from("users")
       .update({
         zero_points: updatedNewUserPoints,
-        referrer_id: referrer.id, // link referrer UUID
+        referrer_id: referrer.id, // link referrer (UUID)
       })
-      .eq("id", newUser.id); // using UUID
+      .eq("id", newUser.id);
 
-    // New user transaction (FIXED UUID)
+    // Transaction for NEW user
     await supabase.from("transactions").insert({
       id: crypto.randomUUID(),
-      user_id: newUser.id, // FIXED
+      user_id: newUser.id, // UUID!
       type: "referral",
       description: "Referral bonus for joining",
-      amount: 200,
+      amount: 100,
       created_at: new Date().toISOString(),
     });
 
-    // ⭐ REFERRER +200
+    // ⭐ REFERRER gets +200
     const updatedRefPoints = referrer.zero_points + 200;
 
     await supabase
@@ -82,17 +97,19 @@ export default async function handler(req: any, res: any) {
         referral_count: referrer.referral_count + 1,
         referral_points_earned: referrer.referral_points_earned + 200,
       })
-      .eq("id", referrer.id); // UUID
+      .eq("id", referrer.id);
 
-    // Referrer transaction (FIXED UUID)
+    // Transaction for REFERRER
     await supabase.from("transactions").insert({
       id: crypto.randomUUID(),
-      user_id: referrer.id, // FIXED
+      user_id: referrer.id, // UUID!
       type: "referral",
-      description: `Referral reward for inviting ${newUserTgId}`,
+      description: `Referral reward for inviting user ${newUserTgId}`,
       amount: 200,
       created_at: new Date().toISOString(),
     });
+
+    console.log("✅ Referral reward applied successfully.");
 
     return res.json({
       ok: true,
