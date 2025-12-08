@@ -30,7 +30,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   /** ---------------------------------------------
    * Initialize Telegram WebApp
    * --------------------------------------------- */
-  const initializeTelegram = useCallback(() => {
+  const initializeTelegram = () => {
     const tg = (window as any).Telegram?.WebApp;
     if (!tg) return;
 
@@ -48,7 +48,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         photo_url: u.photo_url ?? null,
       });
     }
-  }, []);
+  };
 
   /** ---------------------------------------------
    * Authenticate user via backend + load profile
@@ -82,15 +82,11 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       const appUser = data.appUser;
       setUser(appUser);
 
-      // 🔥 DEBUG LOG — REQUIRED
       console.log("Loaded user:", appUser);
       console.log("User ID used for transactions:", appUser?.id);
 
-      // ---------------------------------------------
-      // FIXED TRANSACTION FETCH
-      // ---------------------------------------------
+      // ---- Transaction load fix ----
       const userId = appUser?.id;
-
       if (!userId) {
         console.error("❌ No user ID found. Cannot load transactions.");
         setTransactions([]);
@@ -104,14 +100,14 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         .order("created_at", { ascending: false });
 
       if (txErr) console.error("Transaction fetch error:", txErr);
-      setTransactions(tx || []);
 
+      setTransactions(tx || []);
     } catch (err: any) {
       setError(err.message);
     } finally {
       setIsLoading(false);
     }
-  }, [initializeTelegram]);
+  }, []);
 
   /** Update user points */
   const updateUserPoints = useCallback(
@@ -142,7 +138,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     refreshUser();
-  }, [refreshUser]);
+  }, []); // ⬅️ FIXED: empty dependency to prevent infinite re-renders
 
   return (
     <UserContext.Provider
