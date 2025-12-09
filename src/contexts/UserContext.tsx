@@ -26,8 +26,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   const [telegramUser, setTelegramUser] = useState<any>(null);
   const [isTelegramApp, setIsTelegramApp] = useState(false);
 
-  // Persist referral reward lock across sessions
-  const [referralProcessed, setReferralProcessed] = useState<boolean>(() => {
+  const [referralProcessed, setReferralProcessed] = useState(() => {
     return localStorage.getItem("referralProcessed") === "1";
   });
 
@@ -37,7 +36,6 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     }
   }, [referralProcessed]);
 
-  /** Initialize Telegram WebApp */
   const initializeTelegram = () => {
     const tg = (window as any).Telegram?.WebApp;
     if (!tg) return;
@@ -57,21 +55,19 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  /** MAIN USER LOADER */
   const refreshUser = useCallback(async () => {
     setIsLoading(true);
     setError(null);
 
     try {
       initializeTelegram();
-
       const tg = (window as any).Telegram?.WebApp;
+
       if (!tg || !tg.initData) {
         setError("Open inside Telegram Mini App.");
         return;
       }
 
-      // Authenticate user
       const res = await fetch("/api/telegram", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -85,13 +81,10 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       }
 
       const appUser = data.appUser;
-      const startParam = data.startParam; // real Telegram referral ID
+      const startParam = data.startParam;
 
       setUser(appUser);
 
-      /**
-       * OFFICIAL REFERRAL LOGIC (CLEAN MODE)
-       */
       if (
         startParam &&
         !appUser.referrer_id &&
@@ -109,7 +102,6 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
           }),
         });
 
-        // Reload updated user
         const { data: updatedUser } = await supabase
           .from("users")
           .select("*")
@@ -121,7 +113,6 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         }
       }
 
-      /** Load transactions */
       const { data: tx } = await supabase
         .from("transactions")
         .select("*")
@@ -136,9 +127,8 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     }
   }, [referralProcessed]);
 
-  /** SAFE POINT UPDATE */
   const updateUserPoints = useCallback(
-    async (extraPoints: number) => {
+    async (extraPoints) => {
       if (!user) return;
 
       const res = await fetch("/api/updatePoints", {

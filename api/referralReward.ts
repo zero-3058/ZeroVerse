@@ -34,7 +34,7 @@ export default async function handler(req: any, res: any) {
       return res.status(404).json({ ok: false, error: "New user not found" });
     }
 
-    // Already rewarded?
+    // Prevent double reward
     if (newUser.referrer_id) {
       return res.json({ ok: true, message: "Referral already rewarded" });
     }
@@ -50,20 +50,20 @@ export default async function handler(req: any, res: any) {
       return res.status(404).json({ ok: false, error: "Referrer not found" });
     }
 
-    // ⭐ NEW USER REWARD
-    const updatedNewUserPoints = newUser.zero_points + 100;
+    // ⭐ NEW USER REWARD (100)
+    const updatedNewPoints = newUser.zero_points + 100;
 
-    const { error: applyRefError } = await supabase
+    const { error: updateNewErr } = await supabase
       .from("users")
       .update({
-        zero_points: updatedNewUserPoints,
+        zero_points: updatedNewPoints,
         referrer_id: referrer.id
       })
       .eq("id", newUser.id)
-      .is("referrer_id", null); // prevents duplicate
+      .is("referrer_id", null);
 
-    if (applyRefError) {
-      return res.json({ ok: true, message: "Referral already rewarded (race blocked)" });
+    if (updateNewErr) {
+      return res.json({ ok: true, message: "Referral already rewarded" });
     }
 
     // NEW USER TRANSACTION
@@ -76,13 +76,11 @@ export default async function handler(req: any, res: any) {
       created_at: new Date().toISOString(),
     });
 
-    // ⭐ REFERRER REWARD
-    const updatedRefPoints = referrer.zero_points + 200;
-
+    // ⭐ REFERRER REWARD (200)
     await supabase
       .from("users")
       .update({
-        zero_points: updatedRefPoints,
+        zero_points: referrer.zero_points + 200,
         referral_count: referrer.referral_count + 1,
         referral_points_earned: referrer.referral_points_earned + 200,
       })
@@ -101,6 +99,8 @@ export default async function handler(req: any, res: any) {
     return res.json({ ok: true, message: "Referral reward applied" });
 
   } catch (err: any) {
+    // Only REAL errors printed
+    console.error("Referral error:", err);
     return res.status(500).json({ ok: false, error: err.message });
   }
 }
