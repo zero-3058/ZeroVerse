@@ -66,73 +66,35 @@ export default async function handler(req: any, res: any) {
 
     console.log("🔹 Telegram Login:", { tg_id, startParam });
 
-    // Check if user exists
-    const { data: existingUser } = await supabase
+    // 🟢 THE FIX — ONLY ONE UPSERT (always safe)
+    const { data: userRecord, error: userErr } = await supabase
       .from("users")
-      .select("*")
-      .eq("tg_id", tg_id)
-      .maybeSingle();
-
-    let userRecord = existingUser;
-
-    // CREATE NEW USER (NO REWARDS HERE)
-    if (!existingUser) {
-      console.log("🆕 Creating new user:", tg_id);
-
-      const { data: newUser, error: insertErr } = await supabase
-        .from("users")
-        .upsert({
+      .upsert(
+        {
           tg_id,
           tg_name,
           tg_username,
           photo_url,
-          zero_points: 0, // IMPORTANT: No default rewards
-          referral_count: 0,
-          referral_points_earned: 0,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        })
-        .select()
-        .single();
+          updated_at: new Date().toISOString()
+        },
+        { onConflict: "tg_id" }
+      )
+      .select()
+      .single();
 
-      if (insertErr) {
-        console.error("Insert error:", insertErr);
-        return res.status(500).json({ ok: false, error: insertErr.message });
-      }
-
-      userRecord = newUser;
+    if (userErr || !userRecord) {
+      console.error("User upsert error:", userErr);
+      return res.status(500).json({ ok: false, error: userErr?.message });
     }
 
-    // UPDATE EXISTING USER PROFILE
-    else {
-      const { data: updatedUser, error: updateErr } = await supabase
-        .from("users")
-        .update({
-          tg_name,
-          tg_username,
-          photo_url,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("tg_id", tg_id)
-        .select()
-        .single();
-
-      if (updateErr) {
-        console.error("Update error:", updateErr);
-        return res.status(500).json({ ok: false, error: updateErr.message });
-      }
-
-      userRecord = updatedUser;
-    }
-
-    // NO REWARD LOGIC HERE — only return start_param
-    console.log("➡️ Returning user + start_param to frontend");
+    console.log("➡️ Returning user + startParam to frontend");
 
     return res.json({
       ok: true,
       appUser: userRecord,
-      startParam, // Frontend calls /api/referralReward
+      startParam
     });
+
   } catch (err: any) {
     console.error("telegram auth error:", err);
     return res.status(500).json({ ok: false, error: err.message });

@@ -26,10 +26,19 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   const [telegramUser, setTelegramUser] = useState<any>(null);
   const [isTelegramApp, setIsTelegramApp] = useState(false);
 
-  const [referralProcessed, setReferralProcessed] = useState(false); 
-  // ⚠️ Prevents double referral calls
+  // Persist referral flag across reloads
+  const [referralProcessed, setReferralProcessed] = useState<boolean>(() => {
+    return localStorage.getItem("referralProcessed") === "1";
+  });
 
-  /** INIT TELEGRAM */
+  // Save referral state to localStorage
+  useEffect(() => {
+    if (referralProcessed) {
+      localStorage.setItem("referralProcessed", "1");
+    }
+  }, [referralProcessed]);
+
+  /** Initialize Telegram WebApp */
   const initializeTelegram = () => {
     const tg = (window as any).Telegram?.WebApp;
     if (!tg) return;
@@ -44,12 +53,12 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         id: u.id,
         name: `${u.first_name ?? ""} ${u.last_name ?? ""}`.trim(),
         username: u.username ?? null,
-        photo_url: u.photo_url ?? null
+        photo_url: u.photo_url ?? null,
       });
     }
   };
 
-  /** MAIN USER LOADER */
+  /** MAIN USER LOADING FUNCTION */
   const refreshUser = useCallback(async () => {
     setIsLoading(true);
     setError(null);
@@ -63,11 +72,11 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      /** Authenticate user */
+      // Authenticate user
       const res = await fetch("/api/telegram", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ initData: tg.initData })
+        body: JSON.stringify({ initData: tg.initData }),
       });
 
       const data = await res.json();
@@ -77,39 +86,44 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       }
 
       const appUser = data.appUser;
-      const startParam = data.startParam; // The referrer TG ID
-      setUser(appUser);
+      const startParam = data.startParam; // Referral TG ID
 
+      setUser(appUser);
       console.log("Loaded user:", appUser);
 
-      /** --------------------------------------------
-       * OPTION 3 REFERRAL LOGIC (FRONTEND SIDE)
-       * - Only call referralReward once
-       * - Only for NEW users with no referrer set
-       * -------------------------------------------- */
+      /**
+       * --------------------------------------------------------
+       *  REFERRAL LOGIC (FIXED)
+       *  - Only runs once
+       *  - Only runs when user is new (no referrer_id)
+       *  - React strict mode double-run safe
+       * --------------------------------------------------------
+       */
       if (
-        startParam &&                 // Link contains a referral ID
-        !appUser.referrer_id &&       // Not rewarded previously
-        !referralProcessed &&         // Avoid calling twice
-        appUser.tg_id !== startParam  // Avoid self-refer
+        startParam &&
+        !appUser.referrer_id &&          // Not rewarded before
+        !referralProcessed &&            // Prevent double-call
+        appUser.tg_id !== startParam     // Self-referral check
       ) {
-        console.log("🔗 Calling referralReward:", { 
-          newUser: appUser.tg_id, 
-          referrer: startParam 
+        console.log("🔗 Calling referralReward API:", {
+          newUser: appUser.tg_id,
+          referrer: startParam,
         });
 
+        // Prevent second trigger early
         setReferralProcessed(true);
 
+        // Call backend referral API
         await fetch("/api/referralReward", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             newUserTgId: appUser.tg_id,
-            referrerTgId: startParam
-          })
+            referrerTgId: startParam,
+          }),
         });
 
-        // Reload updated user data (points + referrer_id)
+        // Reload updated user (with points + referrer_id)
         const { data: updatedUser } = await supabase
           .from("users")
           .select("*")
@@ -130,7 +144,6 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         .order("created_at", { ascending: false });
 
       setTransactions(tx || []);
-
     } catch (err: any) {
       console.error(err);
       setError(err.message);
@@ -140,27 +153,30 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   }, [referralProcessed]);
 
   /** SAFE POINT UPDATE */
-  const updateUserPoints = useCallback(async (extraPoints: number) => {
-    if (!user) return;
+  const updateUserPoints = useCallback(
+    async (extraPoints: number) => {
+      if (!user) return;
 
-    const res = await fetch("/api/updatePoints", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ tg_id: user.tg_id, newPoints: extraPoints })
-    });
+      const res = await fetch("/api/updatePoints", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tg_id: user.tg_id, newPoints: extraPoints }),
+      });
 
-    const data = await res.json();
-    if (data.ok) {
-      setUser(data.user);
-    }
-  }, [user]);
+      const data = await res.json();
+      if (data.ok) {
+        setUser(data.user);
+      }
+    },
+    [user]
+  );
 
   const addTransaction = (tx: Transaction) => {
-    setTransactions(prev => [tx, ...prev]);
+    setTransactions((prev) => [tx, ...prev]);
   };
 
   const setWalletAddress = (address: string) => {
-    setUser(u => u ? { ...u, ton_wallet_address: address } : u);
+    setUser((u) => (u ? { ...u, ton_wallet_address: address } : u));
   };
 
   useEffect(() => {
@@ -179,7 +195,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         refreshUser,
         updateUserPoints,
         addTransaction,
-        setWalletAddress
+        setWalletAddress,
       }}
     >
       {children}
