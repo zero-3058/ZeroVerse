@@ -3,16 +3,18 @@ import { Copy, Check, Users, Gift } from 'lucide-react';
 import { useUser } from '@/contexts/UserContext';
 import { toast } from '@/hooks/use-toast';
 
-const BOT_NAME = 'Zeroverse_app_bot'; // Replace with actual bot name
+const BOT_NAME = 'Zeroverse_app_bot'; // Your bot name
 
 export function ReferralSection() {
   const { user, transactions } = useUser();
   const [copied, setCopied] = useState(false);
-  
+
   const tgId = user?.tg_id || '123456789';
-  const referralLink = `https://t.me/${BOT_NAME}?start=${tgId}`;
-  
-  // Calculate referral stats
+
+  // 🔥 FIXED REFERRAL LINK (Mini App requires startapp)
+  const referralLink = `https://t.me/${BOT_NAME}/play?startapp=${tgId}`;
+
+  // Stats
   const referralTransactions = transactions.filter(t => t.type === 'referral');
   const referralCount = referralTransactions.length;
   const referralEarnings = referralTransactions.reduce((sum, t) => sum + t.amount, 0);
@@ -21,9 +23,10 @@ export function ReferralSection() {
     navigator.clipboard.writeText(referralLink);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+
     toast({
       title: "Link Copied!",
-      description: "Share it with your friends to earn 200 zero points each."
+      description: "Share it with your friends to earn referral rewards."
     });
   };
 
@@ -42,6 +45,7 @@ export function ReferralSection() {
             <p className="text-xs text-muted-foreground">Friends Invited</p>
           </div>
         </div>
+
         <div className="game-card flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center">
             <Gift className="w-5 h-5 text-primary" />
@@ -60,10 +64,7 @@ export function ReferralSection() {
           <div className="flex-1 bg-background rounded-lg px-3 py-2 text-sm font-mono truncate">
             {referralLink}
           </div>
-          <button
-            onClick={copyLink}
-            className="btn-primary py-2 px-4"
-          >
+          <button onClick={copyLink} className="btn-primary py-2 px-4">
             {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
           </button>
         </div>
