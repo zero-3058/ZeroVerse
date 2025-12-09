@@ -81,7 +81,7 @@ export default async function handler(req: any, res: any) {
 
       const { data: newUser, error: insertErr } = await supabase
         .from("users")
-        .insert({
+        .upsert({
           tg_id,
           tg_name,
           tg_username,
