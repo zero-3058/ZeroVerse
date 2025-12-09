@@ -8,7 +8,10 @@ export function StatsGrid() {
   
   const gamesPlayed = transactions.filter(t => t.type === 'game').length;
   const totalEarned = user?.zero_points ?? 0;
-  
+
+  // Pull dynamic streak (0 until backend streak system is added)
+  const bestStreak = user?.best_streak ?? 0;
+
   const stats = [
     {
       icon: GamepadIcon,
@@ -24,7 +27,7 @@ export function StatsGrid() {
     },
     {
       icon: Flame,
-      value: '3 days',
+      value: `${bestStreak} days`,
       label: 'Best\nStreak',
       color: 'text-green-400 bg-green-500/20',
     },
@@ -40,7 +43,9 @@ export function StatsGrid() {
               <Icon className="w-5 h-5" />
             </div>
             <span className="text-xl font-bold font-display">{stat.value}</span>
-            <span className="text-xs text-muted-foreground text-center whitespace-pre-line">{stat.label}</span>
+            <span className="text-xs text-muted-foreground text-center whitespace-pre-line">
+              {stat.label}
+            </span>
           </div>
         );
       })}

@@ -83,8 +83,63 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       const appUser = data.appUser;
       const startParam = data.startParam;
 
+      // -------------------------
+      // ⭐ DAILY STREAK LOGIC ⭐
+      // -------------------------
+      const today = new Date().toISOString().split("T")[0];
+      const last = appUser.last_login;
+
+      let current = appUser.current_streak ?? 0;
+      let best = appUser.best_streak ?? 0;
+
+      let shouldUpdateStreak = false;
+
+      // First login ever
+      if (!last) {
+        current = 1;
+        best = 1;
+        shouldUpdateStreak = true;
+      }
+      // Already logged in today → no change
+      else if (last === today) {
+        // nothing
+      }
+      else {
+        const diffDays =
+          (new Date(today).getTime() - new Date(last).getTime()) /
+          (1000 * 60 * 60 * 24);
+
+        if (diffDays === 1) {
+          current += 1; // consecutive day
+        } else {
+          current = 1; // reset streak
+        }
+
+        if (current > best) best = current;
+        shouldUpdateStreak = true;
+      }
+
+      if (shouldUpdateStreak) {
+        await supabase
+          .from("users")
+          .update({
+            current_streak: current,
+            best_streak: best,
+            last_login: today,
+          })
+          .eq("id", appUser.id);
+
+        appUser.current_streak = current;
+        appUser.best_streak = best;
+        appUser.last_login = today;
+      }
+
+      // Set user after streak update
       setUser(appUser);
 
+      // -------------------------
+      // REFERRAL REWARD LOGIC
+      // -------------------------
       if (
         startParam &&
         !appUser.referrer_id &&
@@ -113,6 +168,9 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         }
       }
 
+      // -------------------------
+      // LOAD TRANSACTIONS
+      // -------------------------
       const { data: tx } = await supabase
         .from("transactions")
         .select("*")

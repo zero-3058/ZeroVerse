@@ -17,7 +17,11 @@ export interface User {
   referral_points_earned: number;     // Total points earned through referrals
 
   created_at: string;                 // Timestamp
-  updated_at: string;                 // Timestamp
+  updated_at: string; 
+  best_streak: number;
+  current_streak: number;
+  last_login: string | null;
+                // Timestamp
 }
 
 export interface Transaction {
