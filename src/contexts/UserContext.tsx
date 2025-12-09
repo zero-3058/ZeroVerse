@@ -26,12 +26,11 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   const [telegramUser, setTelegramUser] = useState<any>(null);
   const [isTelegramApp, setIsTelegramApp] = useState(false);
 
-  // Persist referral flag across reloads
+  // Persist referral reward lock across sessions
   const [referralProcessed, setReferralProcessed] = useState<boolean>(() => {
     return localStorage.getItem("referralProcessed") === "1";
   });
 
-  // Save referral state to localStorage
   useEffect(() => {
     if (referralProcessed) {
       localStorage.setItem("referralProcessed", "1");
@@ -58,7 +57,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  /** MAIN USER LOADING FUNCTION */
+  /** MAIN USER LOADER */
   const refreshUser = useCallback(async () => {
     setIsLoading(true);
     setError(null);
@@ -71,10 +70,6 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         setError("Open inside Telegram Mini App.");
         return;
       }
-
-      // TEMP REFERRAL TEST MODE — capture ref from URL
-      const urlParams = new URLSearchParams(window.location.search);
-      const forcedRef = urlParams.get("ref") || null;
 
       // Authenticate user
       const res = await fetch("/api/telegram", {
@@ -90,47 +85,31 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       }
 
       const appUser = data.appUser;
-      const startParam = data.startParam; // Referral TG ID
+      const startParam = data.startParam; // real Telegram referral ID
 
       setUser(appUser);
-      console.log("Loaded user:", appUser);
 
       /**
-       * --------------------------------------------------------
-       * REFERRAL LOGIC (WITH TEMPORARY FORCE MODE)
-       * Will use:
-       * - startParam (from Telegram)
-       * - forcedRef   (from URL ?ref=12345)
-       * --------------------------------------------------------
+       * OFFICIAL REFERRAL LOGIC (CLEAN MODE)
        */
-
-      const finalRef = startParam || forcedRef;
-
       if (
-        finalRef &&                    // A valid referral ID exists
-        !appUser.referrer_id &&        // User wasn't referred before
-        !referralProcessed &&          // Prevent double-referral
-        appUser.tg_id !== finalRef     // Prevent self-referral
+        startParam &&
+        !appUser.referrer_id &&
+        !referralProcessed &&
+        appUser.tg_id !== startParam
       ) {
-        console.log("🔥 Referral triggered:", {
-          newUser: appUser.tg_id,
-          referrer: finalRef,
-        });
-
-        // Prevent running twice
         setReferralProcessed(true);
 
-        // Call backend referral API
         await fetch("/api/referralReward", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             newUserTgId: appUser.tg_id,
-            referrerTgId: finalRef,
+            referrerTgId: startParam,
           }),
         });
 
-        // Reload updated user (with points + referrer_id)
+        // Reload updated user
         const { data: updatedUser } = await supabase
           .from("users")
           .select("*")
@@ -138,7 +117,6 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
           .single();
 
         if (updatedUser) {
-          console.log("Updated user after referral:", updatedUser);
           setUser(updatedUser);
         }
       }
@@ -152,7 +130,6 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
       setTransactions(tx || []);
     } catch (err: any) {
-      console.error(err);
       setError(err.message);
     } finally {
       setIsLoading(false);

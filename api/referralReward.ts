@@ -2,7 +2,6 @@
 import { createClient } from "@supabase/supabase-js";
 import crypto from "crypto";
 
-
 const supabase = createClient(
   process.env.SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -24,37 +23,32 @@ export default async function handler(req: any, res: any) {
       return res.status(400).json({ ok: false, error: "Self referral blocked" });
     }
 
-    console.log("🔗 ReferralReward triggered:", { newUserTgId, referrerTgId });
-    console.log("🔥 referralReward API CALLED");
-
-
     // Load new user
-    const { data: newUser, error: newUserErr } = await supabase
+    const { data: newUser } = await supabase
       .from("users")
       .select("*")
       .eq("tg_id", newUserTgId)
       .single();
 
-    if (!newUser || newUserErr) {
+    if (!newUser) {
       return res.status(404).json({ ok: false, error: "New user not found" });
     }
 
+    // Already rewarded?
     if (newUser.referrer_id) {
       return res.json({ ok: true, message: "Referral already rewarded" });
     }
 
     // Load referrer
-    const { data: referrer, error: refErr } = await supabase
+    const { data: referrer } = await supabase
       .from("users")
       .select("*")
       .eq("tg_id", referrerTgId)
       .single();
 
-    if (!referrer || refErr) {
+    if (!referrer) {
       return res.status(404).json({ ok: false, error: "Referrer not found" });
     }
-
-    console.log("🎉 Referral pair:", { newUserUUID: newUser.id, referrerUUID: referrer.id });
 
     // ⭐ NEW USER REWARD
     const updatedNewUserPoints = newUser.zero_points + 100;
@@ -66,10 +60,9 @@ export default async function handler(req: any, res: any) {
         referrer_id: referrer.id
       })
       .eq("id", newUser.id)
-      .is("referrer_id", null); // prevents double reward
+      .is("referrer_id", null); // prevents duplicate
 
     if (applyRefError) {
-      console.error("❌ Referral apply error:", applyRefError);
       return res.json({ ok: true, message: "Referral already rewarded (race blocked)" });
     }
 
@@ -105,12 +98,9 @@ export default async function handler(req: any, res: any) {
       created_at: new Date().toISOString(),
     });
 
-    console.log("✅ Referral reward applied successfully.");
-
     return res.json({ ok: true, message: "Referral reward applied" });
 
   } catch (err: any) {
-    console.error("Referral error:", err);
     return res.status(500).json({ ok: false, error: err.message });
   }
 }

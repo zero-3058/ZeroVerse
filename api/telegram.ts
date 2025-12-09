@@ -64,9 +64,7 @@ export default async function handler(req: any, res: any) {
     const tg_username = tgUser.username ?? null;
     const photo_url = tgUser.photo_url ?? null;
 
-    console.log("🔹 Telegram Login:", { tg_id, startParam });
-
-    // 🟢 THE FIX — ONLY ONE UPSERT (always safe)
+    // Single UPSERT — safest method
     const { data: userRecord, error: userErr } = await supabase
       .from("users")
       .upsert(
@@ -75,7 +73,7 @@ export default async function handler(req: any, res: any) {
           tg_name,
           tg_username,
           photo_url,
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
         },
         { onConflict: "tg_id" }
       )
@@ -83,20 +81,16 @@ export default async function handler(req: any, res: any) {
       .single();
 
     if (userErr || !userRecord) {
-      console.error("User upsert error:", userErr);
       return res.status(500).json({ ok: false, error: userErr?.message });
     }
-
-    console.log("➡️ Returning user + startParam to frontend");
 
     return res.json({
       ok: true,
       appUser: userRecord,
-      startParam
+      startParam // frontend handles referral
     });
 
   } catch (err: any) {
-    console.error("telegram auth error:", err);
     return res.status(500).json({ ok: false, error: err.message });
   }
 }
