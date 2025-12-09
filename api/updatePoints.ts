@@ -38,7 +38,7 @@ export default async function handler(req: any, res: any) {
       .from("users")
       .update({ zero_points: updatedPoints })
       .eq("id", user.id) // ✔ FIXED
-      .select()
+      .select("*")
       .single();
 
     if (updateErr) {

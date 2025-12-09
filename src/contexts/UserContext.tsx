@@ -118,6 +118,13 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         if (current > best) best = current;
         shouldUpdateStreak = true;
       }
+      console.log("Streak update triggered for user:", {
+        id: appUser.id,
+        tg_id: appUser.tg_id,
+        best_streak: best,
+        current_streak: current,
+        last_login: today
+      });
 
       if (shouldUpdateStreak) {
         await supabase

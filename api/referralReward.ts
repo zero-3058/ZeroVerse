@@ -53,14 +53,17 @@ export default async function handler(req: any, res: any) {
     // ⭐ NEW USER REWARD (100)
     const updatedNewPoints = newUser.zero_points + 100;
 
-    const { error: updateNewErr } = await supabase
+    // UPDATE NEW USER (with full select)
+    const { data: updatedNew, error: updateNewErr } = await supabase
       .from("users")
       .update({
         zero_points: updatedNewPoints,
         referrer_id: referrer.id
       })
       .eq("id", newUser.id)
-      .is("referrer_id", null);
+      .is("referrer_id", null)
+      .select("*") // <-- full user returned
+      .single();
 
     if (updateNewErr) {
       return res.json({ ok: true, message: "Referral already rewarded" });
@@ -84,7 +87,8 @@ export default async function handler(req: any, res: any) {
         referral_count: referrer.referral_count + 1,
         referral_points_earned: referrer.referral_points_earned + 200,
       })
-      .eq("id", referrer.id);
+      .eq("id", referrer.id)
+      .select("*"); // <-- full user returned (safe for future use)
 
     // REFERRER TRANSACTION
     await supabase.from("transactions").insert({
@@ -99,7 +103,6 @@ export default async function handler(req: any, res: any) {
     return res.json({ ok: true, message: "Referral reward applied" });
 
   } catch (err: any) {
-    // Only REAL errors printed
     console.error("Referral error:", err);
     return res.status(500).json({ ok: false, error: err.message });
   }

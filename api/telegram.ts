@@ -4,7 +4,7 @@ import { createClient } from "@supabase/supabase-js";
 
 const supabase = createClient(
   process.env.SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
+  process.env.SUPABASE_SERVICE_ROLE_KEY! // Service role allows UPSERT + UPDATE
 );
 
 // Validate Telegram initData signature
@@ -64,7 +64,7 @@ export default async function handler(req: any, res: any) {
     const tg_username = tgUser.username ?? null;
     const photo_url = tgUser.photo_url ?? null;
 
-    // Single UPSERT — safest method
+    // UPSERT user and RETURN ALL FIELDS including streaks
     const { data: userRecord, error: userErr } = await supabase
       .from("users")
       .upsert(
@@ -77,7 +77,7 @@ export default async function handler(req: any, res: any) {
         },
         { onConflict: "tg_id" }
       )
-      .select()
+      .select("*")   // <-- IMPORTANT: returns streak columns
       .single();
 
     if (userErr || !userRecord) {
@@ -87,7 +87,7 @@ export default async function handler(req: any, res: any) {
     return res.json({
       ok: true,
       appUser: userRecord,
-      startParam // frontend handles referral
+      startParam
     });
 
   } catch (err: any) {
