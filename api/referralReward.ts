@@ -2,6 +2,7 @@
 import { createClient } from "@supabase/supabase-js";
 import crypto from "crypto";
 
+
 const supabase = createClient(
   process.env.SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -24,7 +25,8 @@ export default async function handler(req: any, res: any) {
     }
 
     console.log("🔗 ReferralReward triggered:", { newUserTgId, referrerTgId });
-    
+    console.log("🔥 referralReward API CALLED");
+
 
     // Load new user
     const { data: newUser, error: newUserErr } = await supabase
