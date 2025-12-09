@@ -1,148 +1,275 @@
-import React from "react";
-import { Flame, Star, Trophy, Gift, Users, Target } from "lucide-react";
-import { useUser } from "@/contexts/UserContext";
+import React from 'react';
+import { 
+  Trophy, 
+  Crown, 
+  Star, 
+  Zap, 
+  Gift, 
+  Users, 
+  Copy, 
+  Target, 
+  Flame,
+  Medal,
+  Award,
+  Sparkles
+} from 'lucide-react';
 
-export function SettingsMenu() {
-  const { user, transactions } = useUser();
-
-  const points = user?.zero_points ?? 0;
-  const bestStreak = user?.best_streak ?? 0;
-  const gamesPlayed = transactions.filter(t => t.type === "game").length;
-  const referrals = user?.referral_count ?? 0;
+// Level System Card
+function LevelCard() {
+  const currentXP = 2450;
+  const maxXP = 3000;
+  const level = 12;
+  const progress = (currentXP / maxXP) * 100;
 
   return (
-    <div className="space-y-6 animate-fade-in">
-
-      {/* Level Card */}
-      <div className="menu-item w-full flex items-center justify-between">
-        <div className="flex items-center space-x-3">
-          <Star className="w-6 h-6 text-primary" />
+    <div className="animate-fade-in rounded-2xl bg-muted p-5">
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-3">
+          <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
+            <Zap className="w-6 h-6 text-primary" />
+          </div>
           <div>
-            <p className="font-display font-semibold text-base">Player Level</p>
-            <p className="text-muted-foreground text-sm">
-              Level {Math.floor(points / 1000)}
-            </p>
+            <p className="text-sm text-muted-foreground">Current Level</p>
+            <p className="text-2xl font-bold font-display">Level {level}</p>
           </div>
         </div>
+        <div className="text-right">
+          <p className="text-sm text-muted-foreground">XP</p>
+          <p className="font-semibold">{currentXP.toLocaleString()} / {maxXP.toLocaleString()}</p>
+        </div>
       </div>
+      <div className="h-3 bg-background rounded-full overflow-hidden">
+        <div 
+          className="h-full bg-primary rounded-full transition-all duration-500"
+          style={{ width: `${progress}%` }}
+        />
+      </div>
+      <p className="text-xs text-muted-foreground mt-2">{maxXP - currentXP} XP to Level {level + 1}</p>
+    </div>
+  );
+}
 
-      {/* Rank Card */}
-      <div className="menu-item w-full flex items-center justify-between">
-        <div className="flex items-center space-x-3">
-          <Trophy className="w-6 h-6 text-yellow-400" />
+// Rank Card
+function RankCard() {
+  return (
+    <div className="animate-fade-in rounded-2xl bg-muted p-5">
+      <div className="flex items-center gap-4">
+        <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center">
+          <Crown className="w-8 h-8 text-primary" />
+        </div>
+        <div className="flex-1">
+          <p className="text-sm text-muted-foreground">Current Rank</p>
+          <p className="text-xl font-bold font-display">Diamond Elite</p>
+          <p className="text-sm text-muted-foreground">Top 5% of players</p>
+        </div>
+        <div className="text-right">
+          <p className="text-2xl font-bold text-primary">#127</p>
+          <p className="text-xs text-muted-foreground">Global</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Achievement Showcase
+function AchievementShowcase() {
+  const achievements = [
+    { icon: Trophy, label: 'First Win', unlocked: true },
+    { icon: Medal, label: '10 Streak', unlocked: true },
+    { icon: Award, label: 'Champion', unlocked: false },
+  ];
+
+  return (
+    <div className="animate-fade-in">
+      <h3 className="text-lg font-semibold font-display mb-3">Achievements</h3>
+      <div className="grid grid-cols-3 gap-3">
+        {achievements.map((achievement, index) => {
+          const Icon = achievement.icon;
+          return (
+            <div 
+              key={index}
+              className={`rounded-2xl p-4 flex flex-col items-center gap-2 ${
+                achievement.unlocked ? 'bg-muted' : 'bg-muted/50 opacity-50'
+              }`}
+            >
+              <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
+                achievement.unlocked ? 'bg-primary/10' : 'bg-background'
+              }`}>
+                <Icon className={`w-6 h-6 ${achievement.unlocked ? 'text-primary' : 'text-muted-foreground'}`} />
+              </div>
+              <p className="text-xs font-medium text-center">{achievement.label}</p>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// Referral & Invite Power Card
+function ReferralCard() {
+  const referralCode = "PLAYER2024";
+  const inviteCount = 7;
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(referralCode);
+  };
+
+  return (
+    <div className="animate-fade-in rounded-2xl bg-muted p-5">
+      <div className="flex items-center gap-3 mb-4">
+        <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+          <Users className="w-5 h-5 text-primary" />
+        </div>
+        <div>
+          <p className="font-semibold font-display">Invite Friends</p>
+          <p className="text-sm text-muted-foreground">Earn 500 XP per invite</p>
+        </div>
+      </div>
+      <div className="flex items-center gap-2 mb-3">
+        <div className="flex-1 bg-background rounded-xl px-4 py-3 font-mono text-sm">
+          {referralCode}
+        </div>
+        <button 
+          onClick={handleCopy}
+          className="w-12 h-12 rounded-xl bg-primary flex items-center justify-center"
+        >
+          <Copy className="w-5 h-5 text-primary-foreground" />
+        </button>
+      </div>
+      <p className="text-sm text-muted-foreground">
+        <span className="font-semibold text-foreground">{inviteCount}</span> friends invited • <span className="text-primary font-semibold">{inviteCount * 500} XP</span> earned
+      </p>
+    </div>
+  );
+}
+
+// Daily Reward Card
+function DailyRewardCard() {
+  const currentDay = 4;
+  const rewards = [1, 2, 3, 4, 5, 6, 7];
+
+  return (
+    <div className="animate-fade-in rounded-2xl bg-muted p-5">
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+            <Gift className="w-5 h-5 text-primary" />
+          </div>
           <div>
-            <p className="font-display font-semibold text-base">Rank</p>
-            <p className="text-muted-foreground text-sm">
-              {points >= 20000
-                ? "Diamond"
-                : points >= 15000
-                ? "Gold"
-                : points >= 5000
-                ? "Silver"
-                : points >= 1000
-                ? "Bronze"
-                : "Rookie"}
-            </p>
+            <p className="font-semibold font-display">Daily Rewards</p>
+            <p className="text-sm text-muted-foreground">Day {currentDay} of 7</p>
           </div>
         </div>
+        <button className="px-4 py-2 bg-primary text-primary-foreground rounded-xl text-sm font-medium">
+          Claim
+        </button>
       </div>
-
-      {/* Achievement Showcase */}
-      <div>
-        <h3 className="text-lg font-semibold font-display mb-3">
-          Achievements
-        </h3>
-        <div className="flex space-x-3">
-          <div className="menu-item w-16 h-16 flex items-center justify-center">
-            🏅
-          </div>
-          <div className="menu-item w-16 h-16 flex items-center justify-center">
-            🎯
-          </div>
-          <div className="menu-item w-16 h-16 flex items-center justify-center">
-            🔥
-          </div>
-        </div>
+      <div className="flex gap-2">
+        {rewards.map((day) => (
+          <div 
+            key={day}
+            className={`flex-1 h-2 rounded-full ${
+              day <= currentDay ? 'bg-primary' : 'bg-background'
+            }`}
+          />
+        ))}
       </div>
+    </div>
+  );
+}
 
-      {/* Daily Reward Card */}
-      <div className="menu-item w-full flex items-center justify-between">
-        <div className="flex items-center space-x-3">
-          <Gift className="w-6 h-6 text-green-400" />
+// Mission / Quest Preview
+function MissionPreview() {
+  const missions = [
+    { icon: Target, label: 'Win 3 Games', progress: 2, total: 3, reward: 150 },
+    { icon: Flame, label: 'Get 5 Streak', progress: 3, total: 5, reward: 200 },
+    { icon: Sparkles, label: 'Score 1000 Points', progress: 750, total: 1000, reward: 300 },
+  ];
+
+  return (
+    <div className="animate-fade-in">
+      <h3 className="text-lg font-semibold font-display mb-3">Active Missions</h3>
+      <div className="space-y-3">
+        {missions.map((mission, index) => {
+          const Icon = mission.icon;
+          const progress = (mission.progress / mission.total) * 100;
+          return (
+            <div key={index} className="rounded-2xl bg-muted p-4">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                  <Icon className="w-5 h-5 text-primary" />
+                </div>
+                <div className="flex-1">
+                  <p className="font-medium">{mission.label}</p>
+                  <p className="text-xs text-muted-foreground">{mission.progress} / {mission.total}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-sm font-semibold text-primary">+{mission.reward} XP</p>
+                </div>
+              </div>
+              <div className="h-2 bg-background rounded-full overflow-hidden">
+                <div 
+                  className="h-full bg-primary rounded-full transition-all duration-500"
+                  style={{ width: `${progress}%` }}
+                />
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// Streak Progress Bar (Style C - Chunked)
+function StreakProgressBar() {
+  const currentStreak = 5;
+  const maxStreak = 7;
+  const chunks = Array.from({ length: maxStreak }, (_, i) => i + 1);
+
+  return (
+    <div className="animate-fade-in rounded-2xl bg-muted p-5">
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+            <Flame className="w-5 h-5 text-primary" />
+          </div>
           <div>
-            <p className="font-display font-semibold text-base">
-              Daily Reward
-            </p>
-            <p className="text-muted-foreground text-sm">
-              Claim your daily bonus!
-            </p>
+            <p className="font-semibold font-display">Current Streak</p>
+            <p className="text-sm text-muted-foreground">{currentStreak} days in a row</p>
           </div>
         </div>
+        <div className="text-2xl font-bold text-primary">{currentStreak}🔥</div>
       </div>
-
-      {/* Referral & Invite Card */}
-      <div className="menu-item w-full flex items-center justify-between">
-        <div className="flex items-center space-x-3">
-          <Users className="w-6 h-6 text-blue-400" />
-          <div>
-            <p className="font-display font-semibold text-base">
-              Refer & Earn
-            </p>
-            <p className="text-muted-foreground text-sm">
-              {referrals} total referrals
-            </p>
+      <div className="flex gap-2">
+        {chunks.map((day) => (
+          <div 
+            key={day}
+            className={`flex-1 h-8 rounded-xl flex items-center justify-center text-xs font-medium ${
+              day <= currentStreak 
+                ? 'bg-primary text-primary-foreground' 
+                : 'bg-background text-muted-foreground'
+            }`}
+          >
+            {day}
           </div>
-        </div>
+        ))}
       </div>
+    </div>
+  );
+}
 
-      {/* Player Stats Breakdown */}
-      <div>
-        <h3 className="text-lg font-semibold font-display mb-3">Stats</h3>
-        <div className="menu-item w-full flex justify-between">
-          <span>Games Played</span>
-          <span>{gamesPlayed}</span>
-        </div>
-        <div className="menu-item w-full flex justify-between">
-          <span>Best Streak</span>
-          <span>{bestStreak} days</span>
-        </div>
-        <div className="menu-item w-full flex justify-between">
-          <span>Total Points</span>
-          <span>{points}</span>
-        </div>
-      </div>
-
-      {/* Mission / Quest Preview */}
-      <div>
-        <h3 className="text-lg font-semibold font-display mb-3">
-          Daily Missions
-        </h3>
-
-        <div className="menu-item w-full flex justify-between">
-          <div className="flex items-center space-x-3">
-            <Target className="w-5 h-5 text-purple-400" />
-            <span>Play 1 Game</span>
-          </div>
-          <span className="text-primary">+50</span>
-        </div>
-
-        <div className="menu-item w-full flex justify-between">
-          <div className="flex items-center space-x-3">
-            <Flame className="w-5 h-5 text-orange-400" />
-            <span>Maintain Streak</span>
-          </div>
-          <span className="text-primary">+20</span>
-        </div>
-
-        <div className="menu-item w-full flex justify-between">
-          <div className="flex items-center space-x-3">
-            <Star className="w-5 h-5 text-yellow-300" />
-            <span>Earn 100 Points</span>
-          </div>
-          <span className="text-primary">+40</span>
-        </div>
-
-      </div>
+export function SettingsMenu() {
+  return (
+    <div className="space-y-6">
+      <LevelCard />
+      <RankCard />
+      <AchievementShowcase />
+      <DailyRewardCard />
+      <StreakProgressBar />
+      <ReferralCard />
+      <MissionPreview />
     </div>
   );
 }
