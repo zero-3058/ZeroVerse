@@ -24,6 +24,7 @@ export default async function handler(req: any, res: any) {
     }
 
     console.log("🔗 ReferralReward triggered:", { newUserTgId, referrerTgId });
+    console.log("REFERRAL API HIT:", req.body);
 
     // Load new user
     const { data: newUser, error: newUserErr } = await supabase
