@@ -36,6 +36,9 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     }
   }, [referralProcessed]);
 
+  // -----------------------------------------------------
+  // Telegram Initialization
+  // -----------------------------------------------------
   const initializeTelegram = () => {
     const tg = (window as any).Telegram?.WebApp;
     if (!tg) return;
@@ -55,6 +58,9 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  // -----------------------------------------------------
+  // Refresh User (Main Login + Streak + Referral Logic)
+  // -----------------------------------------------------
   const refreshUser = useCallback(async () => {
     setIsLoading(true);
     setError(null);
@@ -68,6 +74,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
+      // Step 1: Authenticate user through Telegram API route
       const res = await fetch("/api/telegram", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -80,51 +87,33 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      const appUser = data.appUser;
+      let appUser: User = data.appUser;
       const startParam = data.startParam;
 
-      // -------------------------
-      // ⭐ DAILY STREAK LOGIC ⭐
-      // -------------------------
+      // -------------------------------------------------
+      // ⭐ DAILY STREAK SYSTEM ⭐
+      // -------------------------------------------------
       const today = new Date().toISOString().split("T")[0];
       const last = appUser.last_login;
 
       let current = appUser.current_streak ?? 0;
       let best = appUser.best_streak ?? 0;
-
       let shouldUpdateStreak = false;
 
-      // First login ever
       if (!last) {
         current = 1;
         best = 1;
         shouldUpdateStreak = true;
-      }
-      // Already logged in today → no change
-      else if (last === today) {
-        // nothing
-      }
-      else {
+      } else if (last !== today) {
         const diffDays =
           (new Date(today).getTime() - new Date(last).getTime()) /
           (1000 * 60 * 60 * 24);
 
-        if (diffDays === 1) {
-          current += 1; // consecutive day
-        } else {
-          current = 1; // reset streak
-        }
-
+        current = diffDays === 1 ? current + 1 : 1;
         if (current > best) best = current;
+
         shouldUpdateStreak = true;
       }
-      console.log("Streak update triggered for user:", {
-        id: appUser.id,
-        tg_id: appUser.tg_id,
-        best_streak: best,
-        current_streak: current,
-        last_login: today
-      });
 
       if (shouldUpdateStreak) {
         await supabase
@@ -141,12 +130,12 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         appUser.last_login = today;
       }
 
-      // Set user after streak update
+      // Set updated user (AFTER streak logic!)
       setUser(appUser);
 
-      // -------------------------
-      // REFERRAL REWARD LOGIC
-      // -------------------------
+      // -------------------------------------------------
+      // ⭐ REFERRAL REWARD LOGIC ⭐
+      // -------------------------------------------------
       if (
         startParam &&
         !appUser.referrer_id &&
@@ -172,12 +161,13 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
         if (updatedUser) {
           setUser(updatedUser);
+          appUser = updatedUser;
         }
       }
 
-      // -------------------------
-      // LOAD TRANSACTIONS
-      // -------------------------
+      // -------------------------------------------------
+      // Load Transactions
+      // -------------------------------------------------
       const { data: tx } = await supabase
         .from("transactions")
         .select("*")
@@ -185,6 +175,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         .order("created_at", { ascending: false });
 
       setTransactions(tx || []);
+
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -192,6 +183,9 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     }
   }, [referralProcessed]);
 
+  // -----------------------------------------------------
+  // Update Points
+  // -----------------------------------------------------
   const updateUserPoints = useCallback(
     async (extraPoints) => {
       if (!user) return;
