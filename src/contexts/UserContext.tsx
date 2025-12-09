@@ -72,6 +72,10 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
+      // TEMP REFERRAL TEST MODE — capture ref from URL
+      const urlParams = new URLSearchParams(window.location.search);
+      const forcedRef = urlParams.get("ref") || null;
+
       // Authenticate user
       const res = await fetch("/api/telegram", {
         method: "POST",
@@ -93,24 +97,27 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
       /**
        * --------------------------------------------------------
-       *  REFERRAL LOGIC (FIXED)
-       *  - Only runs once
-       *  - Only runs when user is new (no referrer_id)
-       *  - React strict mode double-run safe
+       * REFERRAL LOGIC (WITH TEMPORARY FORCE MODE)
+       * Will use:
+       * - startParam (from Telegram)
+       * - forcedRef   (from URL ?ref=12345)
        * --------------------------------------------------------
        */
+
+      const finalRef = startParam || forcedRef;
+
       if (
-        startParam &&
-        !appUser.referrer_id &&          // Not rewarded before
-        !referralProcessed &&            // Prevent double-call
-        appUser.tg_id !== startParam     // Self-referral check
+        finalRef &&                    // A valid referral ID exists
+        !appUser.referrer_id &&        // User wasn't referred before
+        !referralProcessed &&          // Prevent double-referral
+        appUser.tg_id !== finalRef     // Prevent self-referral
       ) {
-        console.log("🔗 Calling referralReward API:", {
+        console.log("🔥 Referral triggered:", {
           newUser: appUser.tg_id,
-          referrer: startParam,
+          referrer: finalRef,
         });
 
-        // Prevent second trigger early
+        // Prevent running twice
         setReferralProcessed(true);
 
         // Call backend referral API
@@ -119,7 +126,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             newUserTgId: appUser.tg_id,
-            referrerTgId: startParam,
+            referrerTgId: finalRef,
           }),
         });
 
