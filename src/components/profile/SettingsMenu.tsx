@@ -2,14 +2,13 @@ import React from 'react';
 import { User, Bell, Shield, HelpCircle, MessageCircle, FileText, ChevronRight } from 'lucide-react';
 
 const accountItems = [
-  { icon: User, label: 'Edit Profile' },
+  
   { icon: Bell, label: 'Notifications' },
   { icon: Shield, label: 'Privacy & Security' },
 ];
 
 const supportItems = [
-  { icon: HelpCircle, label: 'Help Center' },
-  { icon: MessageCircle, label: 'Contact Support' },
+  
   { icon: FileText, label: 'Terms of Service' },
 ];
 
