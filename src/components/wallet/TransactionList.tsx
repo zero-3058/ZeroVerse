@@ -58,7 +58,7 @@ export function TransactionList({ transactions }: TransactionListProps) {
             </div>
 
             <div className={`font-semibold ${isPositive ? 'points-text' : 'text-destructive'}`}>
-              {isPositive ? '+' : ''}{tx.amount.toLocaleString()} pts
+              {isPositive ? '+' : ''}{tx.amount.toLocaleString()} zero_pts
             </div>
           </div>
         );
