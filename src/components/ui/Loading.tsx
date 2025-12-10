@@ -2,17 +2,14 @@ import React from "react";
 
 export function Loading() {
   return (
-    <div className="fixed inset-0 bg-background flex items-center justify-center z-50">
-      <div className="flex flex-col items-center gap-2">
+    <div className="fixed inset-0 bg-black flex items-center justify-center z-50">
+      <div className="flex flex-col items-center gap-3">
 
-        <h1 className="text-xl font-display font-semibold">ZeroVerse</h1>
-
-        {/* Animated 3 bouncing dots */}
-        <div className="flex gap-2 mt-1">
-          <span className="dot"></span>
-          <span className="dot"></span>
-          <span className="dot"></span>
-        </div>
+        {/* PREMIUM ZEROVERSE TEXT */}
+        <h1 className="text-3xl font-bold tracking-wide text-white animate-zeroverse-glow">
+          ZeroVerse
+          <span className="inline-block w-6 text-center animate-dots">...</span>
+        </h1>
 
       </div>
     </div>
