@@ -1,25 +1,30 @@
 import React from "react";
 
-/**
- * Premium ZeroVerse Loading Screen
- * - Neon gradient brand text
- * - Animated dots (... ... ...)
- * - Glow pulse effect
- * - Pure black app background
- */
-
 export function Loading() {
   return (
-    <div className="loading-container">
-      <div className="loading-inner">
-        {/* Brand Name */}
-        <h1 className="loading-title">
+    <div className="fixed inset-0 bg-black flex items-center justify-center z-50">
+      <div className="flex items-center gap-3">
+
+        {/* Logo */}
+        <img
+          src="/zeroverselogo.png"
+          alt="ZeroVerse Logo"
+          className="w-7 h-7"
+        />
+
+        {/* ZeroVerse text */}
+        <h1
+          className="text-2xl font-bold bg-gradient-to-r from-cyan-400 to-purple-500 text-transparent bg-clip-text"
+        >
           ZeroVerse
-          <span className="loading-dots ml-1 inline-block w-5"></span>
         </h1>
 
-        {/* Optional tagline */}
-        <p className="loading-subtitle">Initializing...</p>
+        {/* Animated dots */}
+        <div className="flex items-center gap-2 ml-2">
+          <span className="dot dot-1" />
+          <span className="dot dot-2" />
+          <span className="dot dot-3" />
+        </div>
       </div>
     </div>
   );

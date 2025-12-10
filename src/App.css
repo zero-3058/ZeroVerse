@@ -3,68 +3,38 @@
   min-height: 100vh;
   min-height: 100dvh;
 }
-/* -------------------------------
-   ZeroVerse Premium Glow Effect
---------------------------------*/
-@keyframes zeroverseGlow {
-  0%   { filter: drop-shadow(0 0 4px #00f5c8); }
-  50%  { filter: drop-shadow(0 0 12px #00f5c8); }
-  100% { filter: drop-shadow(0 0 4px #00f5c8); }
+.dot {
+  width: 10px;
+  height: 10px;
+  background-color: #a669ff; /* Purple dot color */
+  border-radius: 50%;
+  display: inline-block;
+  animation: dotPulse 1.4s infinite ease-in-out both;
 }
 
-/* -------------------------------
-   Three-Dot Animation (...)
---------------------------------*/
-@keyframes dots {
-  0%   { content: ""; }
-  33%  { content: "."; }
-  66%  { content: ".."; }
-  100% { content: "..."; }
+.dot-1 {
+  animation-delay: 0s;
 }
 
-/* Container */
-.loading-container {
-  position: fixed;
-  inset: 0;
-  background: #000;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 9999;
+.dot-2 {
+  animation-delay: 0.2s;
 }
 
-/* Inner wrapper */
-.loading-inner {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
+.dot-3 {
+  animation-delay: 0.4s;
 }
 
-/* Main text */
-.loading-title {
-  font-size: 2.4rem;
-  font-weight: 900;
-  letter-spacing: 1px;
-  background: linear-gradient(to right, #00f5c8, #0fe1ff);
-  background-clip: text;
-  -webkit-background-clip: text;
-  
-  color: transparent;
-  animation: zeroverseGlow 2s ease-in-out infinite;
-}
-
-/* Animated Dots */
-.loading-dots::after {
-  content: "";
-  animation: dots 1s infinite steps(3);
-  color: #00f5c8;
-  font-weight: bold;
-}
-
-/* Subtitle */
-.loading-subtitle {
-  font-size: 0.9rem;
-  color: #4debd6;
-  opacity: 0.7;
+@keyframes dotPulse {
+  0% {
+    opacity: 0.3;
+    transform: scale(0.8);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.1);
+  }
+  100% {
+    opacity: 0.3;
+    transform: scale(0.8);
+  }
 }
