@@ -29,7 +29,7 @@ export interface User {
 export interface Transaction {
   id: string;
   user_id: string;
-  type: "game" | "task" | "referral" | "withdraw" | "wallet_link";
+  type: "game" | "task" | "referral" | "withdraw" | "wallet_link" | "zrc_conversion" | "withdraw_request";
   description: string;
   amount: number;
   created_at: string;
