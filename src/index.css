@@ -1,12 +1,16 @@
+/* Import fonts BEFORE Tailwind (good practice) */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap');
 
+/* Tailwind layers */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/* ------------------------------
+   ROOT THEME VARIABLES
+--------------------------------*/
 @layer base {
   :root {
-    /* ZeroVerse Dark Theme */
     --background: 240 10% 4%;
     --foreground: 0 0% 98%;
 
@@ -37,18 +41,19 @@
 
     --radius: 1rem;
 
-    /* Custom ZeroVerse tokens */
+    /* Custom gradients */
     --gradient-primary: linear-gradient(135deg, hsl(168 100% 42%), hsl(200 100% 50%));
     --gradient-accent: linear-gradient(135deg, hsl(270 80% 60%), hsl(320 80% 55%));
     --gradient-card: linear-gradient(145deg, hsl(240 10% 12%), hsl(240 10% 8%));
     --gradient-wallet: linear-gradient(135deg, hsl(190 60% 20%), hsl(200 50% 12%));
+
     --gradient-game-snake: linear-gradient(135deg, hsl(220 80% 55%), hsl(260 70% 50%));
     --gradient-game-fruit: linear-gradient(135deg, hsl(280 70% 55%), hsl(320 80% 50%));
     --gradient-game-runner: linear-gradient(135deg, hsl(170 70% 45%), hsl(200 80% 50%));
-    
+
     --glow-primary: 0 0 30px hsl(168 100% 42% / 0.3);
     --glow-accent: 0 0 30px hsl(270 80% 60% / 0.3);
-    
+
     --sidebar-background: 240 10% 6%;
     --sidebar-foreground: 0 0% 98%;
     --sidebar-primary: 168 100% 42%;
@@ -60,6 +65,9 @@
   }
 }
 
+/* ------------------------------
+   GLOBAL RESETS
+--------------------------------*/
 @layer base {
   * {
     @apply border-border;
@@ -79,42 +87,20 @@
   }
 }
 
+/* ------------------------------
+   COMPONENT CLASSES
+--------------------------------*/
 @layer components {
-  .gradient-primary {
-    background: var(--gradient-primary);
-  }
+  .gradient-primary { background: var(--gradient-primary); }
+  .gradient-accent { background: var(--gradient-accent); }
+  .gradient-card { background: var(--gradient-card); }
+  .gradient-wallet { background: var(--gradient-wallet); }
+  .gradient-game-snake { background: var(--gradient-game-snake); }
+  .gradient-game-fruit { background: var(--gradient-game-fruit); }
+  .gradient-game-runner { background: var(--gradient-game-runner); }
 
-  .gradient-accent {
-    background: var(--gradient-accent);
-  }
-
-  .gradient-card {
-    background: var(--gradient-card);
-  }
-
-  .gradient-wallet {
-    background: var(--gradient-wallet);
-  }
-
-  .gradient-game-snake {
-    background: var(--gradient-game-snake);
-  }
-
-  .gradient-game-fruit {
-    background: var(--gradient-game-fruit);
-  }
-
-  .gradient-game-runner {
-    background: var(--gradient-game-runner);
-  }
-
-  .glow-primary {
-    box-shadow: var(--glow-primary);
-  }
-
-  .glow-accent {
-    box-shadow: var(--glow-accent);
-  }
+  .glow-primary { box-shadow: var(--glow-primary); }
+  .glow-accent { box-shadow: var(--glow-accent); }
 
   .glass-card {
     @apply backdrop-blur-xl bg-card/60 border border-border/50;
@@ -220,6 +206,9 @@
   }
 }
 
+/* ------------------------------
+   UTILITY CLASSES
+--------------------------------*/
 @layer utilities {
   .text-gradient-primary {
     background: var(--gradient-primary);
@@ -235,48 +224,78 @@
     background-clip: text;
   }
 
-  .animate-float {
-    animation: float 3s ease-in-out infinite;
-  }
-
-  .animate-pulse-glow {
-    animation: pulse-glow 2s ease-in-out infinite;
-  }
+  .animate-float { animation: float 3s ease-in-out infinite; }
+  .animate-pulse-glow { animation: pulse-glow 2s ease-in-out infinite; }
 
   .animate-shimmer {
     animation: shimmer 2s linear infinite;
     background-size: 200% 100%;
   }
+
+  /* Loading dots (for Loading.tsx) */
+  .loading-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 9999px;
+    background: hsl(168 100% 42%);
+    display: inline-block;
+    opacity: 0.5;
+  }
+
+  .animate-dot {
+    animation: dotPulse 1s infinite ease-in-out;
+  }
+
+  .delay-0 {
+    animation-delay: 0ms;
+  }
+
+  .delay-200 {
+    animation-delay: 200ms;
+  }
+
+  .delay-400 {
+    animation-delay: 400ms;
+  }
 }
 
+/* ------------------------------
+   KEYFRAMES
+--------------------------------*/
 @keyframes float {
-  0%, 100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(-10px);
-  }
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
 }
 
 @keyframes pulse-glow {
-  0%, 100% {
-    box-shadow: 0 0 20px hsl(168 100% 42% / 0.3);
-  }
-  50% {
-    box-shadow: 0 0 40px hsl(168 100% 42% / 0.5);
-  }
+  0%, 100% { box-shadow: 0 0 20px hsl(168 100% 42% / 0.3); }
+  50% { box-shadow: 0 0 40px hsl(168 100% 42% / 0.5); }
 }
 
 @keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+/* Loading dot animation */
+@keyframes dotPulse {
   0% {
-    background-position: -200% 0;
+    transform: scale(1);
+    opacity: 0.4;
+  }
+  50% {
+    transform: scale(1.6);
+    opacity: 1;
   }
   100% {
-    background-position: 200% 0;
+    transform: scale(1);
+    opacity: 0.4;
   }
 }
 
-/* Hide scrollbar but allow scrolling */
+/* ------------------------------
+   SCROLLBAR HIDE
+--------------------------------*/
 .no-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;

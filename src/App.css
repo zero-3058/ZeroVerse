@@ -3,38 +3,3 @@
   min-height: 100vh;
   min-height: 100dvh;
 }
-.dot {
-  width: 10px;
-  height: 10px;
-  background-color: #a669ff; /* Purple dot color */
-  border-radius: 50%;
-  display: inline-block;
-  animation: dotPulse 1.4s infinite ease-in-out both;
-}
-
-.dot-1 {
-  animation-delay: 0s;
-}
-
-.dot-2 {
-  animation-delay: 0.2s;
-}
-
-.dot-3 {
-  animation-delay: 0.4s;
-}
-
-@keyframes dotPulse {
-  0% {
-    opacity: 0.3;
-    transform: scale(0.8);
-  }
-  50% {
-    opacity: 1;
-    transform: scale(1.1);
-  }
-  100% {
-    opacity: 0.3;
-    transform: scale(0.8);
-  }
-}
