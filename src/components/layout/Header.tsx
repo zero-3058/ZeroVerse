@@ -6,7 +6,7 @@ export function Header() {
       <div className="flex items-center justify-between px-4 py-3">
 
         {/* Left: Logo + Title */}
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1">
           <img
             src="/zeroverselogo.png"
             alt="ZeroVerse Logo"
