@@ -1,34 +1,25 @@
 import React from "react";
 
+/**
+ * Premium ZeroVerse Loading Screen
+ * - Neon gradient brand text
+ * - Animated dots (... ... ...)
+ * - Glow pulse effect
+ * - Pure black app background
+ */
+
 export function Loading() {
   return (
-    <div className="fixed inset-0 bg-black flex items-center justify-center z-50">
-      <div className="flex flex-col items-center gap-3">
-
-        {/* PREMIUM ZEROVERSE TEXT */}
-        <h1 className="text-3xl font-bold tracking-wide text-white animate-zeroverse-glow">
+    <div className="loading-container">
+      <div className="loading-inner">
+        {/* Brand Name */}
+        <h1 className="loading-title">
           ZeroVerse
-          <span className="inline-block w-6 text-center animate-dots">...</span>
+          <span className="loading-dots ml-1 inline-block w-5"></span>
         </h1>
 
-      </div>
-    </div>
-  );
-}
-
-export function Skeleton({ className = "" }: { className?: string }) {
-  return <div className={`animate-pulse bg-muted rounded-lg ${className}`} />;
-}
-
-export function CardSkeleton() {
-  return (
-    <div className="game-card p-4 space-y-3">
-      <div className="flex items-center gap-3">
-        <Skeleton className="w-14 h-14 rounded-xl" />
-        <div className="flex-1 space-y-2">
-          <Skeleton className="h-5 w-2/3" />
-          <Skeleton className="h-4 w-1/3" />
-        </div>
+        {/* Optional tagline */}
+        <p className="loading-subtitle">Initializing...</p>
       </div>
     </div>
   );

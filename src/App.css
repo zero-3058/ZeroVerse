@@ -3,26 +3,68 @@
   min-height: 100vh;
   min-height: 100dvh;
 }
-/* Neon glow animation */
+/* -------------------------------
+   ZeroVerse Premium Glow Effect
+--------------------------------*/
 @keyframes zeroverseGlow {
-  0% { text-shadow: 0 0 4px #00f5c8, 0 0 8px #00f5c8; opacity: 0.7; }
-  50% { text-shadow: 0 0 10px #00f5c8, 0 0 20px #00f5c8; opacity: 1; }
-  100% { text-shadow: 0 0 4px #00f5c8, 0 0 8px #00f5c8; opacity: 0.7; }
+  0%   { filter: drop-shadow(0 0 4px #00f5c8); }
+  50%  { filter: drop-shadow(0 0 12px #00f5c8); }
+  100% { filter: drop-shadow(0 0 4px #00f5c8); }
 }
 
-.animate-zeroverse-glow {
-  animation: zeroverseGlow 1.8s ease-in-out infinite;
-}
-
-/* Dot animation */
+/* -------------------------------
+   Three-Dot Animation (...)
+--------------------------------*/
 @keyframes dots {
-  0% { content: ""; }
-  33% { content: "."; }
-  66% { content: ".."; }
+  0%   { content: ""; }
+  33%  { content: "."; }
+  66%  { content: ".."; }
   100% { content: "..."; }
 }
 
-.animate-dots::after {
-  content: "...";
-  animation: dots 1.2s infinite steps(3);
+/* Container */
+.loading-container {
+  position: fixed;
+  inset: 0;
+  background: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+
+/* Inner wrapper */
+.loading-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Main text */
+.loading-title {
+  font-size: 2.4rem;
+  font-weight: 900;
+  letter-spacing: 1px;
+  background: linear-gradient(to right, #00f5c8, #0fe1ff);
+  background-clip: text;
+  -webkit-background-clip: text;
+  
+  color: transparent;
+  animation: zeroverseGlow 2s ease-in-out infinite;
+}
+
+/* Animated Dots */
+.loading-dots::after {
+  content: "";
+  animation: dots 1s infinite steps(3);
+  color: #00f5c8;
+  font-weight: bold;
+}
+
+/* Subtitle */
+.loading-subtitle {
+  font-size: 0.9rem;
+  color: #4debd6;
+  opacity: 0.7;
 }
