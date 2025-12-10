@@ -4,20 +4,27 @@ import { useUser } from '@/contexts/UserContext';
 
 export function WalletCard() {
   const { user } = useUser();
+
   const points = user?.zero_points ?? 0;
 
-  // ZRC Conversion (200 zero points = 1 ZRC)
-  const zrcBalance = (points / 200).toFixed(2);
+  // ✅ Real ZRC balance stored in Supabase
+  const realZrcBalance = user?.zrc_balance ?? 0;
+
+  // Optional: estimated ZRC based on remaining points
+  const estZrcFromPoints = (points / 200).toFixed(2);
 
   return (
     <div className="space-y-3">
+      
       {/* WALLET CARD */}
       <div className="points-card animate-fade-in relative overflow-hidden">
-        {/* Decorative elements */}
+        
+        {/* Decorative background */}
         <div className="absolute -top-10 -right-10 w-32 h-32 rounded-full bg-primary/10 blur-2xl" />
         <div className="absolute -bottom-10 -left-10 w-24 h-24 rounded-full bg-accent/10 blur-2xl" />
         
         <div className="relative z-10">
+          
           {/* Total Zero Points */}
           <div className="flex items-center gap-2 mb-3">
             <PointsIcon className="w-5 h-5 text-primary" />
@@ -31,37 +38,33 @@ export function WalletCard() {
             <span className="text-muted-foreground text-lg">zero points</span>
           </div>
 
-          {/* ZRC BALANCE */}
+          {/* Estimated ZRC only if points exist */}
           <p className="text-muted-foreground mb-6">
-            ≈ {zrcBalance} ZRC
+            ≈ {estZrcFromPoints} ZRC (unconverted)
           </p>
 
-          {/* ZeroCoin Details Section */}
+          {/* REAL ZRC BALANCE */}
           <div className="pt-4 border-t border-primary/20">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <span className="text-primary font-semibold">ZRC</span>
                 <span className="text-muted-foreground">ZeroCoin Balance</span>
               </div>
-              <div className="text-right">
-                <span className="text-sm text-muted-foreground">Rate</span>
-              </div>
+              <span className="text-sm text-muted-foreground">200 pts = 1 ZRC</span>
             </div>
 
             <div className="flex items-center justify-between mt-1">
               <span className="text-2xl font-bold font-display">
-                {zrcBalance} <span className="text-lg text-muted-foreground">ZRC</span>
-              </span>
-
-              <span className="text-sm text-muted-foreground">
-                200 zero points = 1 ZRC
+                {realZrcBalance.toFixed(2)}{" "}
+                <span className="text-lg text-muted-foreground">ZRC</span>
               </span>
             </div>
           </div>
+
         </div>
       </div>
 
-      {/* ⭐ ZRC LAUNCH DATE SECTION */}
+      {/* Launch Date */}
       <p className="text-center text-muted-foreground text-sm animate-fade-in">
         🚀 Official ZeroCoin (ZRC) release on March 2026
       </p>
