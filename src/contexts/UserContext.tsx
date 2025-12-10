@@ -74,7 +74,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      // Step 1: Authenticate user through Telegram API route
+      // Step 1: Authenticate user
       const res = await fetch("/api/telegram", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -111,7 +111,6 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
         current = diffDays === 1 ? current + 1 : 1;
         if (current > best) best = current;
-
         shouldUpdateStreak = true;
       }
 
@@ -125,13 +124,25 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
           })
           .eq("id", appUser.id);
 
+        // TEMP update before reload
         appUser.current_streak = current;
         appUser.best_streak = best;
         appUser.last_login = today;
       }
 
-      // Set updated user (AFTER streak logic!)
-      setUser(appUser);
+      // ⭐ RELOAD FULL USER so ZRC does not get overwritten
+      const { data: freshUser } = await supabase
+        .from("users")
+        .select("*")
+        .eq("id", appUser.id)
+        .single();
+
+      if (freshUser) {
+        setUser(freshUser);
+        appUser = freshUser;
+      } else {
+        setUser(appUser);
+      }
 
       // -------------------------------------------------
       // ⭐ REFERRAL REWARD LOGIC ⭐
