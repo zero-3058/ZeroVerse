@@ -14,6 +14,7 @@ import {
   DialogFooter,
   DialogOverlay
 } from '@/components/ui/dialog';
+
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 
@@ -31,6 +32,9 @@ export function WalletScreen() {
   const [withdrawAmount, setWithdrawAmount] = useState('');
   const [withdrawLoading, setWithdrawLoading] = useState(false);
   const [withdrawErrorMsg, setWithdrawErrorMsg] = useState('');
+
+  // ❗ EXTRA POPUP FOR LOCKED WITHDRAWAL
+  const [infoPopup, setInfoPopup] = useState("");
 
   const handleConvert = async () => {
     setConvertErrorMsg('');
@@ -73,6 +77,28 @@ export function WalletScreen() {
     }
 
     setConvertLoading(false);
+  };
+
+  // ⭐ NEW WITHDRAW VALIDATION
+  const beforeOpenWithdraw = () => {
+    const wallet = user?.ton_wallet_address;
+    const zrcLaunchDate = new Date("2026-03-01");
+    const today = new Date();
+
+    // 1️⃣ Wallet Not Connected
+    if (!wallet) {
+      setInfoPopup("Please connect your TON wallet to withdraw ZRC.");
+      return;
+    }
+
+    // 2️⃣ Coin Not Launched Yet
+    if (today < zrcLaunchDate) {
+      setInfoPopup("Withdrawals will open after ZeroCoin (ZRC) launches in March 2026.");
+      return;
+    }
+
+    // ✔ Allowed
+    setWithdrawOpen(true);
   };
 
   const handleWithdraw = async () => {
@@ -139,18 +165,12 @@ export function WalletScreen() {
 
       {/* Action Buttons */}
       <div className="grid grid-cols-2 gap-3">
-        <button
-          className="btn-primary"
-          onClick={() => setConvertOpen(true)}
-        >
+        <button className="btn-primary" onClick={() => setConvertOpen(true)}>
           <RefreshCw className="w-4 h-4" />
           Convert to Zero(ZRC)
         </button>
 
-        <button
-          className="btn-secondary"
-          onClick={() => setWithdrawOpen(true)}
-        >
+        <button className="btn-secondary" onClick={beforeOpenWithdraw}>
           <ArrowUpRight className="w-4 h-4" />
           Withdraw
         </button>
@@ -161,15 +181,13 @@ export function WalletScreen() {
 
       {/* Transaction History */}
       <section>
-        <h2 className="text-lg font-semibold font-display mb-3">
-          Transaction History
-        </h2>
+        <h2 className="text-lg font-semibold font-display mb-3">Transaction History</h2>
         <TransactionList transactions={transactions} />
       </section>
 
       {/* Convert Modal */}
       <Dialog open={convertOpen} onOpenChange={setConvertOpen}>
-        <DialogOverlay /> {/* REQUIRED FIX */}
+        <DialogOverlay />
         <DialogContent>
           <DialogHeader>
             <DialogTitle className="font-display text-lg">
@@ -179,11 +197,7 @@ export function WalletScreen() {
 
           <div className="space-y-3 mt-2">
             <p className="text-muted-foreground text-sm">
-              You have{' '}
-              <span className="font-semibold">
-                {user?.zero_points ?? 0}
-              </span>{' '}
-              points.
+              You have <span className="font-semibold">{user?.zero_points ?? 0}</span> points.
             </p>
 
             <p className="text-muted-foreground text-xs">
@@ -203,11 +217,7 @@ export function WalletScreen() {
           </div>
 
           <DialogFooter>
-            <Button
-              className="btn-primary w-full"
-              disabled={convertLoading}
-              onClick={handleConvert}
-            >
+            <Button className="btn-primary w-full" disabled={convertLoading} onClick={handleConvert}>
               {convertLoading ? 'Converting...' : 'Convert'}
             </Button>
           </DialogFooter>
@@ -216,7 +226,7 @@ export function WalletScreen() {
 
       {/* Withdraw Modal */}
       <Dialog open={withdrawOpen} onOpenChange={setWithdrawOpen}>
-        <DialogOverlay /> {/* REQUIRED FIX */}
+        <DialogOverlay />
         <DialogContent>
           <DialogHeader>
             <DialogTitle className="font-display text-lg">
@@ -226,8 +236,7 @@ export function WalletScreen() {
 
           <div className="space-y-3 mt-2">
             <p className="text-muted-foreground text-sm">
-              ZRC Balance:{' '}
-              <span className="font-semibold">{zrcBalance.toFixed(2)} ZRC</span>
+              ZRC Balance: <span className="font-semibold">{zrcBalance.toFixed(2)} ZRC</span>
             </p>
 
             <p className="text-muted-foreground text-xs">
@@ -236,9 +245,7 @@ export function WalletScreen() {
 
             <p className="text-muted-foreground text-xs">
               Connected Wallet:{' '}
-              <span className="font-mono text-xs">
-                {walletAddress || 'Not connected'}
-              </span>
+              <span className="font-mono text-xs">{walletAddress || 'Not connected'}</span>
             </p>
 
             <Input
@@ -260,6 +267,24 @@ export function WalletScreen() {
               onClick={handleWithdraw}
             >
               {withdrawLoading ? 'Submitting...' : 'Submit Withdrawal'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* INFO POPUP (NO WALLET / NOT LAUNCHED) */}
+      <Dialog open={!!infoPopup} onOpenChange={() => setInfoPopup("")}>
+        <DialogOverlay />
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="font-display text-lg">Notice</DialogTitle>
+          </DialogHeader>
+
+          <p className="text-muted-foreground">{infoPopup}</p>
+
+          <DialogFooter>
+            <Button className="btn-primary w-full" onClick={() => setInfoPopup("")}>
+              OK
             </Button>
           </DialogFooter>
         </DialogContent>
