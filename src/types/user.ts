@@ -8,7 +8,9 @@ export interface User {
 
   photo_url?: string | null;          // ⭐ Telegram profile photo (fix applied)
 
-  zero_points: number;                // User points balance
+  zero_points: number;  
+  zrc_balance: number;
+              // User points balance
   ton_wallet_address?: string | null; // Optional TON wallet
 
   referrer_id?: string | null;        // Who referred this user

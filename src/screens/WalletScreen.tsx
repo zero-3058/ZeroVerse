@@ -12,40 +12,47 @@ import {
   DialogContent,
   DialogTitle,
   DialogFooter,
+  DialogOverlay
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 
 export function WalletScreen() {
-  const { user, refreshUser } = useUser();
-  const { transactions } = useUser();
+  const { user, transactions, refreshUser } = useUser();
 
-  const [open, setOpen] = useState(false);
+  // Convert modal state
+  const [convertOpen, setConvertOpen] = useState(false);
   const [pointsToConvert, setPointsToConvert] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [errorMsg, setErrorMsg] = useState('');
+  const [convertLoading, setConvertLoading] = useState(false);
+  const [convertErrorMsg, setConvertErrorMsg] = useState('');
+
+  // Withdraw modal state
+  const [withdrawOpen, setWithdrawOpen] = useState(false);
+  const [withdrawAmount, setWithdrawAmount] = useState('');
+  const [withdrawLoading, setWithdrawLoading] = useState(false);
+  const [withdrawErrorMsg, setWithdrawErrorMsg] = useState('');
 
   const handleConvert = async () => {
-    setErrorMsg('');
+    setConvertErrorMsg('');
 
     const amount = Number(pointsToConvert);
 
     if (!amount || amount < 200) {
-      setErrorMsg("Minimum 200 points required (1 ZRC).");
+      setConvertErrorMsg('Minimum 200 points required (1 ZRC).');
       return;
     }
 
     if (amount > (user?.zero_points ?? 0)) {
-      setErrorMsg("You don't have enough points.");
+      setConvertErrorMsg("You don't have enough points.");
       return;
     }
 
-    setLoading(true);
+    setConvertLoading(true);
 
     try {
-      const res = await fetch("/api/convertToZrc", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      const res = await fetch('/api/convertToZrc', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           tg_id: user?.tg_id,
           pointsToConvert: amount,
@@ -55,18 +62,69 @@ export function WalletScreen() {
       const data = await res.json();
 
       if (!data.ok) {
-        setErrorMsg(data.error || "Conversion failed");
+        setConvertErrorMsg(data.error || 'Conversion failed');
       } else {
         await refreshUser();
-        setOpen(false);
+        setConvertOpen(false);
         setPointsToConvert('');
       }
     } catch (err) {
-      setErrorMsg("Something went wrong.");
+      setConvertErrorMsg('Something went wrong.');
     }
 
-    setLoading(false);
+    setConvertLoading(false);
   };
+
+  const handleWithdraw = async () => {
+    setWithdrawErrorMsg('');
+
+    const amount = Number(withdrawAmount);
+
+    if (!amount || amount <= 0) {
+      setWithdrawErrorMsg('Enter a valid amount (minimum 1 ZRC).');
+      return;
+    }
+
+    if (amount < 1) {
+      setWithdrawErrorMsg('Minimum withdrawal is 1 ZRC.');
+      return;
+    }
+
+    if (amount > (user?.zrc_balance ?? 0)) {
+      setWithdrawErrorMsg("You don't have enough ZRC.");
+      return;
+    }
+
+    setWithdrawLoading(true);
+
+    try {
+      const res = await fetch('/api/createWithdrawRequest', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tg_id: user?.tg_id,
+          zrcAmount: amount,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!data.ok) {
+        setWithdrawErrorMsg(data.error || 'Withdrawal failed');
+      } else {
+        await refreshUser();
+        setWithdrawOpen(false);
+        setWithdrawAmount('');
+      }
+    } catch (err) {
+      setWithdrawErrorMsg('Something went wrong.');
+    }
+
+    setWithdrawLoading(false);
+  };
+
+  const zrcBalance = user?.zrc_balance ?? 0;
+  const walletAddress = user?.ton_wallet_address ?? 'Not connected';
 
   return (
     <div className="pb-24 space-y-6">
@@ -76,20 +134,23 @@ export function WalletScreen() {
         <p className="text-muted-foreground">Manage your earnings</p>
       </div>
 
-      {/* Points Card */}
+      {/* Points / ZRC Card */}
       <WalletCard />
 
       {/* Action Buttons */}
       <div className="grid grid-cols-2 gap-3">
         <button
           className="btn-primary"
-          onClick={() => setOpen(true)}
+          onClick={() => setConvertOpen(true)}
         >
           <RefreshCw className="w-4 h-4" />
-          Convert to Zero
+          Convert to Zero(ZRC)
         </button>
 
-        <button className="btn-secondary">
+        <button
+          className="btn-secondary"
+          onClick={() => setWithdrawOpen(true)}
+        >
           <ArrowUpRight className="w-4 h-4" />
           Withdraw
         </button>
@@ -107,7 +168,8 @@ export function WalletScreen() {
       </section>
 
       {/* Convert Modal */}
-      <Dialog open={open} onOpenChange={setOpen}>
+      <Dialog open={convertOpen} onOpenChange={setConvertOpen}>
+        <DialogOverlay /> {/* REQUIRED FIX */}
         <DialogContent>
           <DialogHeader>
             <DialogTitle className="font-display text-lg">
@@ -117,7 +179,15 @@ export function WalletScreen() {
 
           <div className="space-y-3 mt-2">
             <p className="text-muted-foreground text-sm">
-              You have <span className="font-semibold">{user?.zero_points}</span> points.
+              You have{' '}
+              <span className="font-semibold">
+                {user?.zero_points ?? 0}
+              </span>{' '}
+              points.
+            </p>
+
+            <p className="text-muted-foreground text-xs">
+              Rate: <span className="font-semibold">200 pts = 1 ZRC</span>
             </p>
 
             <Input
@@ -127,18 +197,69 @@ export function WalletScreen() {
               onChange={(e) => setPointsToConvert(e.target.value)}
             />
 
-            {errorMsg && (
-              <p className="text-red-500 text-sm">{errorMsg}</p>
+            {convertErrorMsg && (
+              <p className="text-red-500 text-sm">{convertErrorMsg}</p>
             )}
           </div>
 
           <DialogFooter>
             <Button
               className="btn-primary w-full"
-              disabled={loading}
+              disabled={convertLoading}
               onClick={handleConvert}
             >
-              {loading ? "Converting..." : "Convert"}
+              {convertLoading ? 'Converting...' : 'Convert'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Withdraw Modal */}
+      <Dialog open={withdrawOpen} onOpenChange={setWithdrawOpen}>
+        <DialogOverlay /> {/* REQUIRED FIX */}
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="font-display text-lg">
+              Withdraw ZeroCoin (ZRC)
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-3 mt-2">
+            <p className="text-muted-foreground text-sm">
+              ZRC Balance:{' '}
+              <span className="font-semibold">{zrcBalance.toFixed(2)} ZRC</span>
+            </p>
+
+            <p className="text-muted-foreground text-xs">
+              Minimum withdrawal: <span className="font-semibold">1 ZRC</span>
+            </p>
+
+            <p className="text-muted-foreground text-xs">
+              Connected Wallet:{' '}
+              <span className="font-mono text-xs">
+                {walletAddress || 'Not connected'}
+              </span>
+            </p>
+
+            <Input
+              type="number"
+              placeholder="Enter ZRC to withdraw"
+              value={withdrawAmount}
+              onChange={(e) => setWithdrawAmount(e.target.value)}
+            />
+
+            {withdrawErrorMsg && (
+              <p className="text-red-500 text-sm">{withdrawErrorMsg}</p>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button
+              className="btn-secondary w-full"
+              disabled={withdrawLoading}
+              onClick={handleWithdraw}
+            >
+              {withdrawLoading ? 'Submitting...' : 'Submit Withdrawal'}
             </Button>
           </DialogFooter>
         </DialogContent>
