@@ -4,10 +4,10 @@ import { createClient } from "@supabase/supabase-js";
 
 const supabase = createClient(
   process.env.SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY! // Service role allows UPSERT + UPDATE
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-// Validate Telegram initData signature
+// Validate Telegram data...
 function validateTelegram(initData: string, botToken: string) {
   const params = new URLSearchParams(initData);
   const items: string[] = [];
@@ -64,20 +64,40 @@ export default async function handler(req: any, res: any) {
     const tg_username = tgUser.username ?? null;
     const photo_url = tgUser.photo_url ?? null;
 
-    // UPSERT user and RETURN ALL FIELDS including streaks
+    // 1️⃣ Fetch existing user to preserve ALL fields (ZRC, streaks, etc.)
+    const { data: existingUser } = await supabase
+      .from("users")
+      .select("*")
+      .eq("tg_id", tg_id)
+      .single();
+
+    // 2️⃣ Build safe upsert payload that DOES NOT overwrite fields
+    const payload: any = {
+      tg_id,
+      tg_name,
+      tg_username,
+      photo_url,
+      updated_at: new Date().toISOString(),
+    };
+
+    if (!existingUser) {
+      // First time user login → initialize all fields
+      payload.zero_points = 0;
+      payload.zrc_balance = 0;
+      payload.current_streak = 0;
+      payload.best_streak = 0;
+      payload.last_login = null;
+      payload.referrer_id = null;
+      payload.referral_count = 0;
+      payload.referral_points_earned = 0;
+      payload.ton_wallet_address = null;
+    }
+
+    // 3️⃣ Perform UPSERT and return FULL RECORD
     const { data: userRecord, error: userErr } = await supabase
       .from("users")
-      .upsert(
-        {
-          tg_id,
-          tg_name,
-          tg_username,
-          photo_url,
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: "tg_id" }
-      )
-      .select("*")   // <-- IMPORTANT: returns streak columns
+      .upsert(payload, { onConflict: "tg_id" })
+      .select("*")
       .single();
 
     if (userErr || !userRecord) {
@@ -86,8 +106,8 @@ export default async function handler(req: any, res: any) {
 
     return res.json({
       ok: true,
-      appUser: userRecord,
-      startParam
+      appUser: userRecord, // NOW includes zrc_balance, streak, wallet, etc.
+      startParam,
     });
 
   } catch (err: any) {
