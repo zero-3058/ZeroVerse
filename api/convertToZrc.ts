@@ -8,6 +8,8 @@ const supabase = createClient(
 );
 
 export default async function handler(req: any, res: any) {
+  console.log("🔥 /api/convertToZrc called");
+
   if (req.method !== "POST") {
     return res.status(405).json({ ok: false, error: "Only POST allowed" });
   }
@@ -15,7 +17,10 @@ export default async function handler(req: any, res: any) {
   try {
     const { tg_id, pointsToConvert } = req.body;
 
+    console.log("📩 Incoming Body:", req.body);
+
     if (!tg_id || !pointsToConvert) {
+      console.log("❌ Missing fields");
       return res.status(400).json({ ok: false, error: "Missing fields" });
     }
 
@@ -26,22 +31,31 @@ export default async function handler(req: any, res: any) {
       .eq("tg_id", tg_id)
       .single();
 
+    console.log("👤 Loaded user:", user);
+
     if (userErr || !user) {
+      console.log("❌ User not found");
       return res.status(404).json({ ok: false, error: "User not found" });
     }
 
     // Check for enough points
     if (user.zero_points < pointsToConvert) {
+      console.log("❌ Not enough points");
       return res.status(400).json({
         ok: false,
         error: "Not enough points to convert",
       });
     }
 
-    // Conversion: 200 pts = 1 ZRC
     const zrcToAdd = pointsToConvert / 200;
     const updatedPoints = user.zero_points - pointsToConvert;
     const updatedZRC = user.zrc_balance + zrcToAdd;
+
+    console.log("🔢 Conversion:", {
+      zrcToAdd,
+      updatedPoints,
+      updatedZRC,
+    });
 
     // Update user
     const { data: updatedUser, error: updateErr } = await supabase
@@ -55,18 +69,33 @@ export default async function handler(req: any, res: any) {
       .single();
 
     if (updateErr) {
+      console.log("❌ User update failed:", updateErr);
       return res.status(500).json({ ok: false, error: updateErr.message });
     }
 
-    // ⭐ Add Transaction Log (simple)
-    await supabase.from("transactions").insert({
-      id: crypto.randomUUID(),
-      user_id: user.id,
-      type: "zrc_conversion",
-      description: `Converted points → ${zrcToAdd.toFixed(2)} ZRC`,
-      amount: zrcToAdd,
-      created_at: new Date().toISOString(),
-    });
+    console.log("✅ User updated");
+
+    // ⭐ INSERT TRANSACTION LOG
+    console.log("🧾 Attempting to insert transaction...");
+
+    const { error: insertErr } = await supabase.from("transactions").insert([
+      {
+        id: crypto.randomUUID(),
+        user_id: user.id,
+        type: "zrc_conversion",
+        description: `Converted ${pointsToConvert} points → ${zrcToAdd.toFixed(
+          2
+        )} ZRC`,
+        amount: zrcToAdd,
+        created_at: new Date().toISOString(),
+      },
+    ]);
+
+    if (insertErr) {
+      console.log("❌ TRANSACTION INSERT ERROR:", insertErr);
+    } else {
+      console.log("✅ Transaction inserted successfully!");
+    }
 
     return res.json({
       ok: true,
@@ -74,8 +103,8 @@ export default async function handler(req: any, res: any) {
       user: updatedUser,
       addedZRC: zrcToAdd,
     });
-
   } catch (err: any) {
+    console.log("❌ Server Error:", err);
     return res.status(500).json({ ok: false, error: err.message });
   }
 }
