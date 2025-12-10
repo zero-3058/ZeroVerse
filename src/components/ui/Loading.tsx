@@ -1,29 +1,33 @@
-import React from 'react';
+import React from "react";
 
 export function Loading() {
   return (
     <div className="fixed inset-0 bg-background flex items-center justify-center z-50">
-      <div className="flex flex-col items-center gap-4">
+      <div className="flex flex-col items-center gap-3">
 
-        {/* XP Orb */}
-        <div className="relative w-16 h-16 flex items-center justify-center">
-
-          {/* Pulse Rings */}
-          <div className="absolute w-16 h-16 rounded-full border-2 border-primary/20 animate-xp-pulse"></div>
-          <div className="absolute w-20 h-20 rounded-full border-2 border-primary/10 animate-xp-pulse-slow"></div>
-
-          {/* XP Core */}
-          <div className="w-10 h-10 rounded-full bg-primary/70 blur-[1px] shadow-[0_0_20px_8px_var(--tw-shadow-color)] shadow-primary/40 animate-xp-core" />
-
-          {/* Orbiting particle */}
-          <div className="absolute w-3 h-3 bg-primary rounded-full animate-xp-orbit shadow-[0_0_10px_3px_rgba(0,0,0,0.4)]" />
-        </div>
-
-        {/* Loading Text */}
-        <p className="text-muted-foreground text-sm animate-pulse">
-          Gaining XP...
+        <p className="text-muted-foreground text-lg font-display flex items-center gap-1">
+          ZeroVerse
+          <span className="loading-dots ml-1"></span>
         </p>
 
+      </div>
+    </div>
+  );
+}
+
+export function Skeleton({ className = "" }: { className?: string }) {
+  return <div className={`animate-pulse bg-muted rounded-lg ${className}`} />;
+}
+
+export function CardSkeleton() {
+  return (
+    <div className="game-card p-4 space-y-3">
+      <div className="flex items-center gap-3">
+        <Skeleton className="w-14 h-14 rounded-xl" />
+        <div className="flex-1 space-y-2">
+          <Skeleton className="h-5 w-2/3" />
+          <Skeleton className="h-4 w-1/3" />
+        </div>
       </div>
     </div>
   );

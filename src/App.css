@@ -3,38 +3,16 @@
   min-height: 100vh;
   min-height: 100dvh;
 }
-@keyframes xpPulse {
-  0% { transform: scale(1); opacity: 0.6; }
-  100% { transform: scale(1.6); opacity: 0; }
+/* Animated three dots like ... */
+.loading-dots::after {
+  content: "...";
+  animation: dots 1.5s steps(4, end) infinite;
 }
 
-@keyframes xpPulseSlow {
-  0% { transform: scale(1); opacity: 0.3; }
-  100% { transform: scale(2); opacity: 0; }
-}
-
-@keyframes xpCore {
-  0%, 100% { transform: scale(1); filter: brightness(1); }
-  50% { transform: scale(1.15); filter: brightness(1.4); }
-}
-
-@keyframes xpOrbit {
-  0% { transform: rotate(0deg) translateX(18px) rotate(0deg); }
-  100% { transform: rotate(360deg) translateX(18px) rotate(-360deg); }
-}
-
-.animate-xp-pulse {
-  animation: xpPulse 1.5s infinite ease-out;
-}
-
-.animate-xp-pulse-slow {
-  animation: xpPulseSlow 2.2s infinite ease-out;
-}
-
-.animate-xp-core {
-  animation: xpCore 1.5s infinite ease-in-out;
-}
-
-.animate-xp-orbit {
-  animation: xpOrbit 2s linear infinite;
+@keyframes dots {
+  0%   { content: ""; }
+  25%  { content: "."; }
+  50%  { content: ".."; }
+  75%  { content: "..."; }
+  100% { content: ""; }
 }
