@@ -11,7 +11,7 @@ export function PointsDisplay() {
     <div className="points-card animate-fade-in">
       <div className="flex items-center gap-2 mb-2">
         <PointsIcon className="w-5 h-5 text-primary" />
-        <span className="text-muted-foreground text-sm">Total Points</span>
+        <span className="text-muted-foreground text-sm">Total Zero Points</span>
       </div>
       
       <div className="flex items-baseline gap-2 mb-1">

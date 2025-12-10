@@ -6,7 +6,7 @@ export function WalletCard() {
   const { user } = useUser();
   const points = user?.zero_points ?? 0;
 
-  // ZRC Conversion (200 zero_pts = 1 ZRC)
+  // ZRC Conversion (200 zero points = 1 ZRC)
   const zrcBalance = (points / 200).toFixed(2);
 
   return (
@@ -18,17 +18,17 @@ export function WalletCard() {
         <div className="absolute -bottom-10 -left-10 w-24 h-24 rounded-full bg-accent/10 blur-2xl" />
         
         <div className="relative z-10">
-          {/* Total Points */}
+          {/* Total Zero Points */}
           <div className="flex items-center gap-2 mb-3">
             <PointsIcon className="w-5 h-5 text-primary" />
-            <span className="text-muted-foreground text-sm">Total Points</span>
+            <span className="text-muted-foreground text-sm">Total Zero Points</span>
           </div>
           
           <div className="flex items-baseline gap-2 mb-1">
             <span className="text-5xl font-bold font-display points-text">
               {points.toLocaleString()}
             </span>
-            <span className="text-muted-foreground text-lg">zero_pts</span>
+            <span className="text-muted-foreground text-lg">zero points</span>
           </div>
 
           {/* ZRC BALANCE */}
@@ -54,7 +54,7 @@ export function WalletCard() {
               </span>
 
               <span className="text-sm text-muted-foreground">
-                200 zero_pts = 1 ZRC
+                200 zero points = 1 ZRC
               </span>
             </div>
           </div>
