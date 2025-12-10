@@ -86,7 +86,7 @@ export function WalletScreen() {
           onClick={() => setOpen(true)}
         >
           <RefreshCw className="w-4 h-4" />
-          Convert to Zero(ZRC)
+          Convert to Zero
         </button>
 
         <button className="btn-secondary">
